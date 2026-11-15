@@ -197,11 +197,12 @@ public final class LumenConfig {
     }
 
     public void save() {
-        try {
-            Files.writeString(path(), GSON.toJson(this));
-        } catch (IOException ignored) {
-        }
+    try {
+        Files.createDirectories(path().getParent());
+        Files.writeString(path(), GSON.toJson(this));
+    } catch (IOException ignored) {
     }
+}
 
     public void recolor() {
         playerArgb = parse(playerColor, 0xB388FF);
