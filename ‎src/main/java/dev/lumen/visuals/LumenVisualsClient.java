@@ -30,6 +30,7 @@ public class LumenVisualsClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        ConfigProfiles.ensureDefault();
         LumenConfig.load();
         TargetTracker.init();
         LumenCommands.register();
