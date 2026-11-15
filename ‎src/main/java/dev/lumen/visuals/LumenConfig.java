@@ -173,8 +173,11 @@ public final class LumenConfig {
     }
 
     private static Path path() {
-        return FabricLoader.getInstance().getConfigDir().resolve("lumenvisuals.json");
-    }
+    return FabricLoader.getInstance()
+            .getConfigDir()
+            .resolve("Lumen")
+            .resolve("default.cfg");
+}
 
     public static void load() {
         try {
