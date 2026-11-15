@@ -5,100 +5,111 @@ import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class ConfigProfiles {
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path DIR =
-            FabricLoader.getInstance().getConfigDir().resolve("Lumen");
+    private static final Gson GSON =
+            new GsonBuilder().setPrettyPrinting().create();
 
-    private ConfigProfiles() {}
+    private static Path directory() {
+        return FabricLoader.getInstance()
+                .getConfigDir().resolve("Lumen");
+    }
 
-    private static Path file(String name) {
+    private static Path profile(String name) {
         if (name == null || !name.matches("[A-Za-z0-9_-]{1,32}")) {
-            throw new IllegalArgumentException(
-                    "Имя: только латинские буквы, цифры, _ и - (до 32 символов)"
-            );
+            throw new IllegalArgumentException("Invalid profile name");
         }
-        return DIR.resolve(name + ".cfg");
+        return directory().resolve(name + ".cfg");
     }
 
     public static void ensureDefault() {
         try {
-            Files.createDirectories(DIR);
-            Path path = file("default");
+            Files.createDirectories(directory());
+            Path path = profile("default");
 
             if (!Files.exists(path)) {
-                LumenConfig defaults = new LumenConfig();
+                LumenConfig config = new LumenConfig();
 
-                // Все переключатели выключены в стартовом конфиге.
-                for (var field : LumenConfig.class.getFields()) {
-                    if (field.getType() == boolean.class) {
-                        field.setBoolean(defaults, false);
+                for (Field field : LumenConfig.class.getFields()) {
+                    if (field.getType() == boolean.class
+                            && !Modifier.isStatic(field.getModifiers())) {
+                        field.setBoolean(config, false);
                     }
                 }
 
-                defaults.recolor();
-                Files.writeString(path, GSON.toJson(defaults));
+                config.save();
+                Files.writeString(path, GSON.toJson(config));
             }
         } catch (Exception e) {
-            LumenVisualsClient.LOGGER.error("Не удалось создать default.cfg", e);
+            e.printStackTrace();
         }
     }
 
-    public static void save(String name) throws IOException {
-        Files.createDirectories(DIR);
-        Files.writeString(file(name), GSON.toJson(LumenConfig.get()));
+    public static boolean save(String name) {
+        try {
+            Files.createDirectories(directory());
+            Files.writeString(profile(name),
+                    GSON.toJson(LumenConfig.get()));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    public static void load(String name) throws IOException {
-        LumenConfig loaded = GSON.fromJson(
-                Files.readString(file(name)), LumenConfig.class
-        );
+    public static boolean load(String name) {
+        try {
+            Path path = profile(name);
+            if (!Files.exists(path)) return false;
 
-        if (loaded == null) {
-            throw new IOException("Конфиг пустой или повреждён");
-        }
+            LumenConfig loaded =
+                    GSON.fromJson(Files.readString(path), LumenConfig.class);
 
-        LumenConfig current = LumenConfig.get();
+            if (loaded == null) return false;
 
-        // Копируем все настройки, не заменяя сам объект конфига.
-        for (var field : LumenConfig.class.getFields()) {
-            int modifiers = field.getModifiers();
+            LumenConfig current = LumenConfig.get();
 
-            if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) {
-                continue;
-            }
+            for (Field field : LumenConfig.class.getFields()) {
+                int modifiers = field.getModifiers();
 
-            try {
+                if (Modifier.isStatic(modifiers)
+                        || Modifier.isTransient(modifiers)) continue;
+
                 field.set(current, field.get(loaded));
-            } catch (IllegalAccessException e) {
-                throw new IOException("Не удалось загрузить настройку: " + field.getName(), e);
             }
-        }
 
-        current.recolor();
-        current.save();
+            current.recolor();
+            current.save();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    public static List<String> list() throws IOException {
-        Files.createDirectories(DIR);
+    public static List<String> list() {
+        try {
+            Files.createDirectories(directory());
 
-        try (var files = Files.list(DIR)) {
-            return files
-                    .filter(Files::isRegularFile)
-                    .map(p -> p.getFileName().toString())
-                    .filter(n -> n.toLowerCase().endsWith(".cfg"))
-                    .map(n -> n.substring(0, n.length() - 4))
+            return Files.list(directory())
+                    .filter(p -> p.toString().endsWith(".cfg"))
+                    .map(p -> p.getFileName().toString()
+                            .replaceFirst("\\.cfg$", ""))
                     .sorted()
-                    .toList();
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            return List.of();
         }
     }
 
-    public static String directory() {
-        return DIR.toAbsolutePath().toString();
+    public static String directoryPath() {
+        return directory().toString();
     }
-              }
+
+    private ConfigProfiles() {}
+                                }
