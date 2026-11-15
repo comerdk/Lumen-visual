@@ -4,6 +4,18 @@ plugins {
     id 'maven-publish'
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs = ['main/java']
+        }
+        resources {
+            srcDirs = ['main/resources']
+        }
+    }
+}
+
+
 version = project.mod_version
 group = project.maven_group
 
