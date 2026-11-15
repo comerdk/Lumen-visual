@@ -71,6 +71,40 @@ private static final Set<String> ROOTS = Set.of("lumen", "thud", "tesp", "world"
         c.recolor();
         c.save();
     }
+// ---------- config profiles ----------
+private static void cfg(String[] a) {
+    if (a.length == 0) {
+        say("Использование: .cfg save|load|list|dir");
+        return;
+    }
+
+    switch (a[0].toLowerCase()) {
+        case "save" -> {
+            if (a.length < 2) {
+                say("Использование: .cfg save имя");
+            } else {
+                say(ConfigProfiles.save(a[1])
+                        ? "Профиль сохранён: " + a[1]
+                        : "Не удалось сохранить профиль");
+            }
+        }
+        case "load" -> {
+            if (a.length < 2) {
+                say("Использование: .cfg load имя");
+            } else {
+                say(ConfigProfiles.load(a[1])
+                        ? "Профиль загружен: " + a[1]
+                        : "Не удалось загрузить профиль");
+            }
+        }
+        case "list" ->
+                say("Профили: " + String.join(", ", ConfigProfiles.list()));
+        case "dir" ->
+                say("Папка профилей: " + ConfigProfiles.directoryPath());
+        default ->
+                say("Команды: .cfg save имя | load имя | list | dir");
+    }
+}
 
     // ---------- thud ----------
     private static void thud(String[] a) {
