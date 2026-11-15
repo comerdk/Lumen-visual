@@ -55,6 +55,7 @@ private static final Set<String> ROOTS = Set.of("lumen", "thud", "tesp", "world"
         }
         String[] a = Arrays.copyOfRange(t, i + 1, t.length);
         switch (t[i].toLowerCase()) {
+            case "cfg" -> cfg(a);
             case "thud" -> thud(a);
             case "tesp" -> tesp(a);
             case "world" -> world(a);
