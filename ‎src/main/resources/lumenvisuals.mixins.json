@@ -1,0 +1,7 @@
+{
+  "required": false,
+  "package": "dev.lumen.visuals.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["SimpleOptionMixin", "BackgroundRendererMixin", "HeldItemRendererMixin"],
+  "injectors": { "defaultRequire": 0 }
+}
