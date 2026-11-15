@@ -16,9 +16,7 @@ import java.util.Set;
  *   /lumen thud x 80          (обычная клиентская команда)
  *   .thud x 80  или  .lumen thud x 80   (с точкой, без слеша — удобнее на телефоне)
  */
-public final class LumenCommands {
-    private static final Set<String> ROOTS = Set.of("lumen", "thud", "tesp", "world", "theme", "gui", "menu");
-
+private static final Set<String> ROOTS = Set.of("lumen", "thud", "tesp", "world", "theme", "gui", "menu", "cfg");
     private LumenCommands() {}
 
     public static void register() {
