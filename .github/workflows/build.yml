@@ -1,4 +1,3 @@
-
 name: Build Lumen Visuals
 
 on:
@@ -12,7 +11,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -23,33 +21,33 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.12
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12'
 
-      - name: Find Gradle project and build
+      - name: Find Gradle project directory
+        id: project
         shell: bash
         run: |
-          GRADLE_FILE=$(find . -name settings.gradle -o -name settings.gradle.kts | head -n 1)
-
-          if [ -z "$GRADLE_FILE" ]; then
-            GRADLE_FILE=$(find . -name build.gradle -o -name build.gradle.kts | head -n 1)
-          fi
-
-          if [ -z "$GRADLE_FILE" ]; then
-            echo "ERROR: Gradle project not found!"
+          SETTINGS_FILE="$(find . -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path '*/.gradle/*' -print -quit)"
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "Could not find settings.gradle or settings.gradle.kts in the repository." >&2
+            echo "Upload the contents of the LumenVisuals project, or keep the project folder in the repository." >&2
             exit 1
           fi
+          PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+          echo "Using Gradle project directory: $PROJECT_DIR"
 
-          PROJECT_DIR=$(dirname "$GRADLE_FILE")
-          echo "Building project in: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
-
-          gradle --no-daemon clean build
+      - name: Build Fabric mod
+        run: gradle --no-daemon clean build
+        working-directory: ${{ steps.project.outputs.project_dir }}
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: lumen-visuals-fabric-1.21.4
-          path: '**/build/libs/*.jar'
+          path: ${{ steps.project.outputs.project_dir }}/build/libs/*.jar
           if-no-files-found: error
           retention-days: 30
