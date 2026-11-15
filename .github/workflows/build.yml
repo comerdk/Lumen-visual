@@ -1,3 +1,4 @@
+
 name: Build Lumen Visuals
 
 on:
@@ -11,6 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -21,18 +23,33 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Gradle 8.12
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.12'
 
-      - name: Build Fabric mod
-        run: gradle --no-daemon clean build
+      - name: Find Gradle project and build
+        shell: bash
+        run: |
+          GRADLE_FILE=$(find . -name settings.gradle -o -name settings.gradle.kts | head -n 1)
+
+          if [ -z "$GRADLE_FILE" ]; then
+            GRADLE_FILE=$(find . -name build.gradle -o -name build.gradle.kts | head -n 1)
+          fi
+
+          if [ -z "$GRADLE_FILE" ]; then
+            echo "ERROR: Gradle project not found!"
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$GRADLE_FILE")
+          echo "Building project in: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+
+          gradle --no-daemon clean build
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: lumen-visuals-fabric-1.21.4
-          path: build/libs/*.jar
+          path: '**/build/libs/*.jar'
           if-no-files-found: error
           retention-days: 30
