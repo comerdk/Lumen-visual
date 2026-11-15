@@ -1,3 +1,4 @@
+
 plugins {
     id 'fabric-loom' version '1.9-SNAPSHOT'
     id 'maven-publish'
@@ -11,6 +12,7 @@ base {
 }
 
 repositories {
+    mavenCentral()
 }
 
 dependencies {
@@ -20,8 +22,29 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
+// Support normal src path and path with invisible U+200E prefix.
+def hiddenPrefix = new String(Character.toChars(0x200E))
+
+sourceSets {
+    main {
+        java {
+            srcDirs = [
+                'src/main/java',
+                "${hiddenPrefix}src/main/java"
+            ]
+        }
+        resources {
+            srcDirs = [
+                'src/main/resources',
+                "${hiddenPrefix}src/main/resources"
+            ]
+        }
+    }
+}
+
 processResources {
     inputs.property "version", project.version
+
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }
@@ -37,5 +60,9 @@ java {
 }
 
 jar {
-    from("LICENSE") { rename { "${it}_${project.base.archivesName.get()}" } }
+    from("LICENSE") {
+        rename {
+            "${it}_${project.base.archivesName.get()}"
+        }
+    }
 }
