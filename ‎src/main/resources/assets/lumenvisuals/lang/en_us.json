@@ -1,1 +1,8 @@
-
+{
+  "key.categories.lumenvisuals": "Lumen Visuals",
+  "key.lumenvisuals.menu": "Open Lumen Menu",
+  "key.lumenvisuals.esp": "Toggle ESP",
+  "key.lumenvisuals.tracers": "Toggle Tracers",
+  "key.lumenvisuals.nametags": "Toggle Nametags",
+  "key.lumenvisuals.fullbright": "Toggle Fullbright"
+}
