@@ -39,10 +39,7 @@ public final class LumenConfig {
 
     // target ESP / target HUD
     public boolean tesp = true;
-    public String tespStyle = "crystals"; // crystals | ring | box | both
-    public int crystalSize = 100;
-    public int crystalSpeed = 100;
-    public String crystalColor = "B388FF";
+    public String tespStyle = "ring"; // ring | box | both
     public String tespColor = "B388FF";
     public boolean thud = true;
     public int thudX = 60;
@@ -101,8 +98,11 @@ public final class LumenConfig {
     public int vmX = 0, vmY = 0, vmZ = 0;       // -100..100 (x0.01 блока)
     public int vmScale = 100;                   // 30..200 %
     public int vmRotX = 0, vmRotY = 0, vmRotZ = 0; // -180..180
-    public String vmSwing = "vanilla";          // vanilla|smooth|slow|snap|stab|slash|spin|bounce|none
-    public int vmSwingSpeed = 100;              // 100..300 %
+    public String vmSwing = "smooth";           // Wexside: smooth|mode2..mode7|vanilla|none
+    public int vmSwingSpeed = 100;              // 50..300 %
+    public boolean vmAnimation = true;
+    public boolean vmRotate = false;
+    public int vmRotateSpeed = 1;               // 1..5
     public boolean vmNoEquip = false;
 
     // косметика
@@ -114,7 +114,7 @@ public final class LumenConfig {
     public boolean cosFollowTheme = true;
     public String cosColor = "FFD6F5";
 
-    public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb, crystalArgb;
+    public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb;
     public transient int themeRgb, themeLight, themeDark, cosRgb;
 
     public static int parseHex(String s) {
@@ -216,9 +216,6 @@ public final class LumenConfig {
         passiveArgb = parse(passiveColor, 0x55FF99);
         if (range < 8) range = 8;
         tespArgb = parse(tespColor, 0xB388FF);
-        crystalArgb = parse(crystalColor, 0xB388FF);
-        crystalSize = Math.max(30, Math.min(250, crystalSize));
-        crystalSpeed = Math.max(20, Math.min(300, crystalSpeed));
         thudArgb = parse(thudColor, 0xB388FF);
         fogRgb = parse(fogColor, 0x3B1580) & 0xFFFFFF;
         tintRgb = parse(tintColor, 0x7A3FE0) & 0xFFFFFF;
@@ -247,7 +244,8 @@ public final class LumenConfig {
         espFillAlpha = Math.max(10, Math.min(80, espFillAlpha));
         espLine = Math.max(1, Math.min(6, espLine));
         vmScale = Math.max(30, Math.min(200, vmScale));
-        vmSwingSpeed = Math.max(100, Math.min(300, vmSwingSpeed));
+        vmSwingSpeed = Math.max(50, Math.min(300, vmSwingSpeed));
+        vmRotateSpeed = Math.max(1, Math.min(5, vmRotateSpeed));
         cosSize = Math.max(50, Math.min(200, cosSize));
         cosSpeed = Math.max(20, Math.min(300, cosSpeed));
         cosRgb = cosFollowTheme ? themeLight : (parse(cosColor, 0xFFD6F5) & 0xFFFFFF);

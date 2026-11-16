@@ -209,10 +209,6 @@ public final class VisualsRenderer {
     private static final float[] CX = new float[8];
     private static final float[] CY = new float[8];
     private static final boolean[] CV = new boolean[8];
-    private static final int[][] CRYSTAL_EDGES = {{0,2},{0,3},{0,4},{0,5},{1,2},{1,3},{1,4},{1,5},{2,3},{3,4},{4,5},{5,2},{0,1}};
-    private static final double[][] CRYSTAL_VERTS = new double[6][3];
-    private static final float[] CRYSTAL_SX = new float[6], CRYSTAL_SY = new float[6];
-    private static final boolean[] CRYSTAL_OK = new boolean[6];
     private static final int[][] EDGES = {{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3}, {4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
 
     private static void drawTargetEsp(DrawContext c, MinecraftClient mc, LumenConfig cfg, int sw, int sh) {
@@ -230,10 +226,6 @@ public final class VisualsRenderer {
         int glow = (col & 0x00FFFFFF) | 0x40000000;
         String style = cfg.tespStyle;
 
-        if ("crystals".equals(style)) {
-            drawTargetCrystals(c, cfg, px, py, pz, w, h, sw, sh);
-            return;
-        }
         if (!"box".equals(style)) {
             double r = w * 0.75 + 0.2;
             double phase = (Math.sin(System.currentTimeMillis() / 450.0) + 1.0) / 2.0;
@@ -254,47 +246,6 @@ public final class VisualsRenderer {
                 if (!CV[e[0]] || !CV[e[1]]) continue;
                 line(c, CX[e[0]], CY[e[0]], CX[e[1]], CY[e[1]], glow, 4);
                 line(c, CX[e[0]], CY[e[0]], CX[e[1]], CY[e[1]], col, 2);
-            }
-        }
-    }
-
-
-    /** Orbiting 3D diamond crystals around the tracked target. */
-    private static void drawTargetCrystals(DrawContext c, LumenConfig cfg, double tx, double ty, double tz,
-                                           float targetWidth, float targetHeight, int sw, int sh) {
-        double time = System.nanoTime() / 1_000_000_000.0 * (cfg.crystalSpeed / 100.0);
-        double orbit = targetWidth * 0.72 + 0.32;
-        double size = 0.18 * (cfg.crystalSize / 100.0);
-        int base = 0xFF000000 | cfg.crystalArgb;
-        int glow = (cfg.crystalArgb & 0x00FFFFFF) | 0x55000000;
-        for (int i = 0; i < 5; i++) {
-            double a = time * (0.85 + i * 0.09) + i * (Math.PI * 2.0 / 5.0);
-            double bob = Math.sin(time * 1.7 + i * 1.4) * 0.18;
-            double cx = tx + Math.cos(a) * orbit;
-            double cy = ty + targetHeight * (0.28 + i * 0.105) + bob;
-            double cz = tz + Math.sin(a) * orbit;
-            double spin = time * (1.1 + i * 0.12) + i;
-            double cs = Math.cos(spin), sn = Math.sin(spin);
-            double[][] v = CRYSTAL_VERTS;
-            v[0][0] = cx; v[0][1] = cy + size; v[0][2] = cz;
-            v[1][0] = cx; v[1][1] = cy - size; v[1][2] = cz;
-            for (int k = 0; k < 4; k++) {
-                double q = Math.PI * 0.25 + k * Math.PI * 0.5;
-                double lx = Math.cos(q) * size * 0.72;
-                double lz = Math.sin(q) * size * 0.72;
-                v[k + 2][0] = cx + lx * cs - lz * sn;
-                v[k + 2][1] = cy + Math.sin(spin * 0.7 + k) * size * 0.08;
-                v[k + 2][2] = cz + lx * sn + lz * cs;
-            }
-            for (int k = 0; k < 6; k++) {
-                CRYSTAL_OK[k] = project(v[k][0], v[k][1], v[k][2], sw, sh);
-                CRYSTAL_SX[k] = SCR[0]; CRYSTAL_SY[k] = SCR[1];
-            }
-            for (int[] edge : CRYSTAL_EDGES) {
-                int a0 = edge[0], b0 = edge[1];
-                if (!CRYSTAL_OK[a0] || !CRYSTAL_OK[b0]) continue;
-                line(c, CRYSTAL_SX[a0], CRYSTAL_SY[a0], CRYSTAL_SX[b0], CRYSTAL_SY[b0], glow, 4);
-                line(c, CRYSTAL_SX[a0], CRYSTAL_SY[a0], CRYSTAL_SX[b0], CRYSTAL_SY[b0], base, 2);
             }
         }
     }
