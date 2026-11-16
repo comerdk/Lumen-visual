@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "lumenvisuals",
+  "version": "2.0.1",
+  "name": "Lumen Visuals",
+  "description": "Visual client mod for Minecraft 1.21.4",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.lumen.visuals.LumenVisualsClient"
+    ]
+  },
+  "mixins": [
+    "lumenvisuals.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
