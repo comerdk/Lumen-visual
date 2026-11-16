@@ -31,7 +31,13 @@ LUMEN VISUALS 2.0.0 — Fabric 1.21.4 (клиентский мод, Java 21)
   GitHub Actions выполняет настоящую Gradle-сборку и публикует JAR как artifact.
 
 
-Latest UI/render changes: per-column GUI scrolling, right-click section collapse, left-click module toggle, orbiting 3D diamond Target ESP with size/speed/color controls, and Wexside-inspired swing transform modes adapted to the 1.21.4 HeldItemRenderer hook.
+Swing Animation update (Wexside-style adaptation):
+- Replaced the old hand animation path with a redirect at HeldItemRenderer.swingArm/applySwingOffset.
+- Added Smooth, Mode 2-7, Vanilla and None, speed scaling, and optional rotation.
+- Adapted transforms to Lumen's Minecraft 1.21.4 mappings and existing View Model settings.
 
+Sky shader resources:
+- Added the Wexside ambient sky GLSL vertex/fragment and composite shader assets under assets/lumenvisuals/shaders/sky.
+- The uploaded Wexside source contains these shader files but does not contain a Java renderer that invokes them; its AmbientModule only exposes shader settings and its SkyRenderingMixin changes skyColor. Therefore these GLSL assets are ported, but a complete 1.21.4 GPU post-process integration is not claimed in this archive.
 
-GUI updates: each column scrolls independently with the mouse wheel; left click toggles a setting and right click folds/unfolds the following settings section. Target ESP adds orbiting 3D diamond crystals with size, speed and color controls. The plasma palette now changes ClientWorld.getSkyColor directly instead of drawing a screen-space layer over blocks.
+Build status: not verified in this environment. Gradle 8.12 distribution could not be downloaded because services.gradle.org was unreachable. Run GitHub Actions to compile.
