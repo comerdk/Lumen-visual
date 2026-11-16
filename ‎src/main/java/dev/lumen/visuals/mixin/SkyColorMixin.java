@@ -1,5 +1,6 @@
 package dev.lumen.visuals.mixin;
 
+import dev.lumen.visuals.Gfx;
 import dev.lumen.visuals.LumenConfig;
 import dev.lumen.visuals.WorldEffects;
 import net.minecraft.client.world.ClientWorld;
