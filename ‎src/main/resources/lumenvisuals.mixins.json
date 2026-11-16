@@ -6,8 +6,7 @@
   "client": [
     "HeldItemRendererMixin",
     "SimpleOptionMixin",
-    "BackgroundRendererMixin",
-    "SkyColorMixin"
+    "BackgroundRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
