@@ -223,6 +223,9 @@ public final class LumenCommands {
         if (a.length == 0) {
             say("tesp " + onOff(c.tesp)
                     + " style=" + c.tespStyle
+                    + " crystals=" + c.crystalCount
+                    + " size=" + c.crystalSize + "%"
+                    + " speed=" + c.crystalSpeed + "%"
                     + " color=#" + c.tespColor);
             return;
         }
@@ -240,12 +243,31 @@ public final class LumenCommands {
 
             case "style" -> {
                 if (a.length > 1 &&
-                        Set.of("ring", "box", "both").contains(a[1].toLowerCase())) {
+                        Set.of("crystal", "ring", "box", "both").contains(a[1].toLowerCase())) {
                     c.tespStyle = a[1].toLowerCase();
                     say("style = " + c.tespStyle);
                 } else {
-                    say("style: ring | box | both");
+                    say("style: crystal | ring | box | both");
                 }
+            }
+
+            case "count" -> {
+                if (a.length > 1) try {
+                    c.crystalCount = Integer.parseInt(a[1]);
+                    say("crystals = " + c.crystalCount);
+                } catch (Exception e) { say("count 3..12"); }
+            }
+            case "size" -> {
+                if (a.length > 1) try {
+                    c.crystalSize = Integer.parseInt(a[1]);
+                    say("crystal size = " + c.crystalSize + "%");
+                } catch (Exception e) { say("size 40..200"); }
+            }
+            case "speed" -> {
+                if (a.length > 1) try {
+                    c.crystalSpeed = Integer.parseInt(a[1]);
+                    say("crystal speed = " + c.crystalSpeed + "%");
+                } catch (Exception e) { say("speed 20..300"); }
             }
 
             case "color" -> {
@@ -257,7 +279,7 @@ public final class LumenCommands {
                 }
             }
 
-            default -> say("tesp: on|off|style ring|box|both|color HEX");
+            default -> say("tesp: on|off|style crystal|ring|box|both|count|size|speed|color HEX");
         }
     }
 
@@ -486,7 +508,7 @@ public final class LumenCommands {
     private static void help() {
         say("Меню: .gui (или RShift). Команды можно с точкой: .thud x 80 или /lumen thud x 80");
         say("thud on|off|x N|y N|scale F|style glass|flat|color HEX|skin on|off|hold SEC|reset");
-        say("tesp on|off|style ring|box|both|color HEX");
+        say("tesp on|off|style crystal|ring|box|both|count N|size N|speed N|color HEX");
         say("theme HEX | theme hsv H S V | theme reset");
         say("world on|off|preset newyear|sunset|aurora|sakura|off | sat 0-200");
         say("world fog <старт%> <конец%> | fogcolor HEX | time day|sunset|night|N | snow N | stars N | dark N | tint HEX [A]");

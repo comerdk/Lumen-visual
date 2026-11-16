@@ -39,8 +39,14 @@ public final class LumenConfig {
 
     // target ESP / target HUD
     public boolean tesp = true;
-    public String tespStyle = "ring"; // ring | box | both
+    public String tespStyle = "crystal"; // ring | box | both | crystal
     public String tespColor = "B388FF";
+    public int crystalCount = 6;          // 3..12 кристаллов вокруг цели
+    public int crystalSize = 100;         // 40..200 % размера
+    public int crystalSpeed = 100;        // 20..300 % скорости вращения
+    public float crystalRadius = 1.15f;   // радиус орбиты (блоки)
+    public boolean predict = true;        // траектории лука/арбалета/трезубца/зелий/пёрлов
+    public int predictColor = 0x55FFAA;   // RGB без альфы, рисуется полупрозрачно
     public boolean thud = true;
     public int thudX = 60;
     public int thudY = 40;
@@ -253,6 +259,10 @@ public final class LumenConfig {
             tespArgb = 0xFF000000 | themeRgb;
             thudArgb = 0xFF000000 | themeRgb;
         }
+        crystalCount = Math.max(3, Math.min(12, crystalCount));
+        crystalSize = Math.max(40, Math.min(200, crystalSize));
+        crystalSpeed = Math.max(20, Math.min(300, crystalSpeed));
+        crystalRadius = Math.max(0.5f, Math.min(3.0f, crystalRadius));
     }
 
     private static int parse(String s, int def) {

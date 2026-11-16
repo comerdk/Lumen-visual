@@ -110,13 +110,17 @@ public class LumenScreen extends Screen {
             case 2 -> { // ---------- Target ----------
                 add(0, new Hdr("Target ESP"));
                 add(0, new Tog("Включить", () -> c.tesp, v -> c.tesp = v));
-                add(0, new Cyc("Стиль", new String[]{"ring", "box", "both"}, () -> c.tespStyle, v -> c.tespStyle = v));
+                add(0, new Cyc("Стиль", new String[]{"crystal", "ring", "box", "both"}, () -> c.tespStyle, v -> c.tespStyle = v));
+                add(0, new Sld("Кристаллы", 3, 12, 1, () -> c.crystalCount, v -> c.crystalCount = v, String::valueOf));
+                add(0, new Sld("Размер кристаллов", 40, 200, 5, () -> c.crystalSize, v -> c.crystalSize = v, v -> v + "%"));
+                add(0, new Sld("Скорость вращения", 20, 300, 10, () -> c.crystalSpeed, v -> c.crystalSpeed = v, v -> v + "%"));
 
                 add(1, new Hdr("Target HUD"));
                 add(1, new Tog("Включить", () -> c.thud, v -> c.thud = v));
                 add(1, new Cyc("Стиль", new String[]{"glass", "flat"}, () -> c.thudStyle, v -> c.thudStyle = v));
                 add(1, new Tog("Голова игрока", () -> c.thudSkin, v -> c.thudSkin = v));
                 add(1, new Sld("Размер", 50, 200, 5, () -> Math.round(c.thudScale * 100), v -> c.thudScale = v / 100f, v -> v + "%"));
+                add(1, new Tog("Prediction", () -> c.predict, v -> c.predict = v));
 
                 add(2, new Hdr("Позиция Target HUD"));
                 add(2, new Sld("Смещение X", -250, 250, 5, () -> c.thudX, v -> c.thudX = v, String::valueOf));

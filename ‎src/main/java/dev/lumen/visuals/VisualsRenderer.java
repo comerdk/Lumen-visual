@@ -91,7 +91,7 @@ public final class VisualsRenderer {
         if (ready) {
             Cosmetics.render(c, mc, cfg, mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
         }
-        if (!ready || !(cfg.esp || cfg.tracers || cfg.nametags || cfg.tesp)) return;
+        if (!ready || !(cfg.esp || cfg.tracers || cfg.nametags || cfg.tesp || cfg.predict)) return;
         boolean anyEsp = cfg.esp || cfg.tracers || cfg.nametags;
         boolean fillMode = cfg.esp && "fill".equals(cfg.espMode);
         EntityEsp.begin();
@@ -155,6 +155,7 @@ public final class VisualsRenderer {
 
         if (fillMode) EntityEsp.flush(c, cfg, sw, sh);
         if (cfg.tesp) drawTargetEsp(c, mc, cfg, sw, sh);
+        if (cfg.predict) TrajectoryPredictor.render(c, mc, cfg, sw, sh);
     }
 
     /** Фокусное расстояние в GUI-пикселях (для размера частиц по расстоянию). */
@@ -226,6 +227,11 @@ public final class VisualsRenderer {
         int glow = (col & 0x00FFFFFF) | 0x40000000;
         String style = cfg.tespStyle;
 
+        if ("crystal".equals(style)) {
+            drawCrystals(c, px, py, pz, w, h, cfg, col, sw, sh);
+            return;
+        }
+
         if (!"box".equals(style)) {
             double r = w * 0.75 + 0.2;
             double phase = (Math.sin(System.currentTimeMillis() / 450.0) + 1.0) / 2.0;
@@ -248,6 +254,70 @@ public final class VisualsRenderer {
                 line(c, CX[e[0]], CY[e[0]], CX[e[1]], CY[e[1]], col, 2);
             }
         }
+    }
+
+    /** Кристаллы-октаэдры, вращающиеся вокруг цели. */
+    private static void drawCrystals(DrawContext c, double px, double py, double pz,
+                                     float w, float h, LumenConfig cfg, int col, int sw, int sh) {
+        int n = cfg.crystalCount;
+        double radius = cfg.crystalRadius * (0.55 + w * 0.35);
+        double size = 0.18 * (cfg.crystalSize / 100.0);
+        double speed = cfg.crystalSpeed / 100.0;
+        double time = System.currentTimeMillis() / 1000.0 * speed;
+        int fill = (col & 0x00FFFFFF) | 0x55000000;
+        int edge = (col & 0x00FFFFFF) | 0xEE000000;
+        int glow = (col & 0x00FFFFFF) | 0x33000000;
+        double midY = py + h * 0.55;
+
+        for (int i = 0; i < n; i++) {
+            double a = time * 1.4 + i * (Math.PI * 2.0 / n);
+            double bob = Math.sin(time * 2.2 + i * 0.9) * 0.12;
+            double cx = px + Math.cos(a) * radius;
+            double cy = midY + bob;
+            double cz = pz + Math.sin(a) * radius;
+            // лёгкий наклон по орбите
+            double spin = time * 2.0 + i;
+            drawOctahedron(c, cx, cy, cz, size, spin, fill, edge, glow, sw, sh);
+        }
+        // тонкое кольцо-база
+        ring(c, px, py + 0.04, pz, radius * 0.92, (col & 0x00FFFFFF) | 0x44000000, 0, sw, sh);
+    }
+
+    /** Октаэдр (кристалл): верх/низ + экватор из 4 точек. */
+    private static void drawOctahedron(DrawContext c, double x, double y, double z, double s,
+                                       double spin, int fill, int edge, int glow, int sw, int sh) {
+        double cs = Math.cos(spin), sn = Math.sin(spin);
+        // вершины в локальных координатах
+        double[][] v = {
+                {0, s * 1.35, 0},          // top
+                {0, -s * 1.35, 0},         // bottom
+                {s * cs, 0, s * sn},
+                {-s * sn, 0, s * cs},
+                {-s * cs, 0, -s * sn},
+                {s * sn, 0, -s * cs}
+        };
+        float[] sx = new float[6], sy = new float[6];
+        boolean[] ok = new boolean[6];
+        for (int i = 0; i < 6; i++) {
+            ok[i] = project(x + v[i][0], y + v[i][1], z + v[i][2], sw, sh);
+            sx[i] = SCR[0];
+            sy[i] = SCR[1];
+        }
+        // рёбра: top/bottom к экватору + кольцо экватора
+        int[][] edges = {
+                {0, 2}, {0, 3}, {0, 4}, {0, 5},
+                {1, 2}, {1, 3}, {1, 4}, {1, 5},
+                {2, 3}, {3, 4}, {4, 5}, {5, 2}
+        };
+        for (int[] e : edges) {
+            if (!ok[e[0]] || !ok[e[1]]) continue;
+            line(c, sx[e[0]], sy[e[0]], sx[e[1]], sy[e[1]], glow, 3);
+            line(c, sx[e[0]], sy[e[0]], sx[e[1]], sy[e[1]], edge, 1);
+        }
+        // лёгкая «заливка» — крест через центр
+        if (ok[0] && ok[1]) line(c, sx[0], sy[0], sx[1], sy[1], fill, 2);
+        if (ok[2] && ok[4]) line(c, sx[2], sy[2], sx[4], sy[4], fill, 1);
+        if (ok[3] && ok[5]) line(c, sx[3], sy[3], sx[5], sy[5], fill, 1);
     }
 
     private static void ring(DrawContext c, double cx, double y, double cz, double r, int col, int glow, int sw, int sh) {
