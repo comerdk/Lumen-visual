@@ -100,6 +100,8 @@ public class LumenVisualsClient implements ClientModInitializer {
         while (kTracers.wasPressed()) { c.tracers = !c.tracers; notify(mc, "Tracers", c.tracers, c); }
         while (kNametags.wasPressed()) { c.nametags = !c.nametags; notify(mc, "Nametags", c.nametags, c); }
         while (kFullbright.wasPressed()) { c.fullbright = !c.fullbright; notify(mc, "Fullbright", c.fullbright, c); }
+
+        ClickActions.tick(mc);
     }
 
     private static void notify(MinecraftClient mc, String name, boolean on, LumenConfig c) {

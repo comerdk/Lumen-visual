@@ -84,6 +84,13 @@ public final class LumenConfig {
     public int glassOpacity = 70;         // 20..95
     public boolean guiAnim = true;        // «жидкие» блики в меню
 
+    // click actions: бинд 0 = не задан, 32.. = клавиша, 1000+N = кнопка мыши N (ЛКМ/ПКМ нельзя)
+    public int bindPearl = 0;
+    public int bindSpec = 0;
+    public int bindHub = 0;
+    public String clickSpecCmd = "spec";  // команда для режима Spec (без /)
+    public String clickHubCmd = "hub";    // команда для режима Hub (без /)
+
     public int cfgVer = 0;
 
     // собственные частицы
@@ -263,6 +270,11 @@ public final class LumenConfig {
         crystalSize = Math.max(40, Math.min(200, crystalSize));
         crystalSpeed = Math.max(20, Math.min(300, crystalSpeed));
         crystalRadius = Math.max(0.5f, Math.min(3.0f, crystalRadius));
+        bindPearl = ClickActions.clean(bindPearl);
+        bindSpec = ClickActions.clean(bindSpec);
+        bindHub = ClickActions.clean(bindHub);
+        if (clickSpecCmd == null) clickSpecCmd = "spec";
+        if (clickHubCmd == null) clickHubCmd = "hub";
     }
 
     private static int parse(String s, int def) {

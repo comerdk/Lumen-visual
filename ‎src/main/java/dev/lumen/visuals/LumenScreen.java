@@ -33,6 +33,7 @@ public class LumenScreen extends Screen {
     private final List<W> ws = new ArrayList<>();
     private final int[] cy = new int[3];
     private W drag;
+    private Bind listening; // кнопка бинда, ждущая нажатия
 
     public LumenScreen() {
         super(Text.literal("Lumen Visuals"));
@@ -57,6 +58,7 @@ public class LumenScreen extends Screen {
         ws.clear();
         cy[0] = cy[1] = cy[2] = CY0;
         drag = null;
+        listening = null;
 
         switch (tab) {
             case 0 -> { // ---------- Visuals ----------
@@ -78,6 +80,12 @@ public class LumenScreen extends Screen {
                 add(1, new Sld("Дальность", 16, 256, 8, () -> c.range, v -> c.range = v, v -> v + " м"));
                 add(1, new Sld("Яркость Fullbright", 2, 100, 2, () -> (int) c.fullbrightGamma, v -> c.fullbrightGamma = v, String::valueOf));
 
+                add(2, new Hdr("Click actions"));
+                add(2, new Bind("Pearl", () -> c.bindPearl, v -> c.bindPearl = v));
+                add(2, new Bind("Spec в чат", () -> c.bindSpec, v -> c.bindSpec = v));
+                add(2, new Bind("/hub в чат", () -> c.bindHub, v -> c.bindHub = v));
+                add(2, new Note("Клик по кнопке, потом клавиша."));
+                add(2, new Note("Esc при выборе — стереть бинд"));
                 add(2, new Hdr("Подсказки"));
                 add(2, new Note("Меню: RShift или чат .gui"));
                 add(2, new Note("Помощь: .lumen help"));
@@ -325,6 +333,14 @@ public class LumenScreen extends Screen {
     public boolean mouseClicked(double mx, double my, int button) {
         double lx = (mx - px) / us, ly = (my - py) / us;
         LumenConfig cfg = LumenConfig.get();
+        if (listening != null) {
+            if (ClickActions.mouseAllowed(button)) {
+                listening.set.accept(ClickActions.mouseCode(button));
+                listening = null;
+                cfg.save();
+            }
+            return true; // ЛКМ/ПКМ (mouse 1 и 2) не биндятся и ничего не делают
+        }
         if (lx >= 0 && ly >= 0 && lx < PW && ly < PH) {
             if (button == 0 && in(lx, ly, PW - 34, 12, 20, 16)) {
                 close();
@@ -372,6 +388,19 @@ public class LumenScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (listening != null) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                listening.set.accept(0); // Esc — стереть бинд
+            } else if (keyCode != GLFW.GLFW_KEY_UNKNOWN) {
+                listening.set.accept(keyCode);
+            } else {
+                return true;
+            }
+            listening = null;
+            LumenConfig.get().recolor();
+            LumenConfig.get().save();
+            return true;
+        }
         if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) {
             close();
             return true;
@@ -386,6 +415,7 @@ public class LumenScreen extends Screen {
 
     @Override
     public void removed() {
+        listening = null;
         LumenConfig c = LumenConfig.get();
         c.recolor();
         c.save();
@@ -473,6 +503,40 @@ public class LumenScreen extends Screen {
         @Override
         boolean down(LumenScreen s, double mx, double my, int b) {
             set.accept(!get.getAsBoolean());
+            return true;
+        }
+    }
+
+    private static final class Bind extends W {
+        final String label;
+        final IntSupplier get;
+        final IntConsumer set;
+
+        Bind(String label, IntSupplier get, IntConsumer set) {
+            this.label = label;
+            this.get = get;
+            this.set = set;
+            this.h = 20;
+        }
+
+        @Override
+        void draw(LumenScreen s, DrawContext c, double mx, double my) {
+            LumenConfig cfg = LumenConfig.get();
+            boolean wait = s.listening == this;
+            if (hit(mx, my) || wait) Gfx.rrect(c, x, y, w, h - 1, 7, 0x24FFFFFF, 0x12FFFFFF, s.ps);
+            c.drawText(s.textRenderer, label, (int) x + 6, (int) y + 6, 0xFFFFFFFF, true);
+            float bw = 72, bx = x + w - bw - 2;
+            int a = wait ? 0xE0 : 0x99, b = wait ? 0xF0 : 0xB0;
+            Gfx.rrect(c, bx, y + 2, bw, 16, 8, Gfx.withA(cfg.themeLight, a), Gfx.withA(cfg.themeRgb, b), s.ps);
+            Gfx.ring(c, bx, y + 2, bw, 16, 8, Gfx.ringPx(s.ps), wait ? 0xCCFFFFFF : 0x55FFFFFF, s.ps);
+            String t = wait ? "..." : s.textRenderer.trimToWidth(ClickActions.keyName(get.getAsInt()), 64);
+            c.drawCenteredTextWithShadow(s.textRenderer, t, (int) (bx + bw / 2), (int) y + 6, 0xFFFFFFFF);
+        }
+
+        @Override
+        boolean down(LumenScreen s, double mx, double my, int b) {
+            if (b != 0) return false;
+            s.listening = this;
             return true;
         }
     }
