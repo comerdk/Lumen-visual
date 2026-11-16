@@ -110,7 +110,7 @@ public class LumenScreen extends Screen {
             case 2 -> { // ---------- Target ----------
                 add(0, new Hdr("Target ESP"));
                 add(0, new Tog("Включить", () -> c.tesp, v -> c.tesp = v));
-                add(0, new Cyc("Стиль", new String[]{"ring", "box", "both"}, () -> c.tespStyle, v -> c.tespStyle = v));
+                add(0, new Cyc("Стиль", new String[]{"souls", "ring", "box", "both", "aura", "cylinder"}, () -> c.tespStyle, v -> c.tespStyle = v));
 
                 add(1, new Hdr("Target HUD"));
                 add(1, new Tog("Включить", () -> c.thud, v -> c.thud = v));
@@ -148,6 +148,14 @@ public class LumenScreen extends Screen {
                 add(2, new Cyc("Вариант", new String[]{"off", "aurora", "nebula", "solar", "toxic"}, () -> c.plasma, v -> c.plasma = v));
                 add(2, new Sld("Яркость", 0, 100, 5, () -> c.plasmaIntensity, v -> c.plasmaIntensity = v, v -> v + "%"));
                 add(2, new Sld("Скорость", 20, 300, 10, () -> c.plasmaSpeed, v -> c.plasmaSpeed = v, v -> v + "%"));
+                add(2, new Hdr("Wavy Grid Sky"));
+                add(2, new Tog("Волнистая сетка", () -> c.gridSky, v -> c.gridSky = v));
+                add(2, new Note("Цвет линий"));
+                add(2, new Swatches(SWATCHES, v -> c.gridColor = v, () -> LumenConfig.parseHex(c.gridColor)));
+                add(2, new Sld("Размер ячеек", 8, 40, 1, () -> c.gridCellSize, v -> c.gridCellSize = v, String::valueOf));
+                add(2, new Sld("Изгиб волн", 0, 100, 5, () -> c.gridWave, v -> c.gridWave = v, v -> v + "%"));
+                add(2, new Sld("Скорость волн", 20, 300, 10, () -> c.gridSpeed, v -> c.gridSpeed = v, v -> v + "%"));
+                add(2, new Sld("Свечение сетки", 0, 100, 5, () -> c.gridGlow, v -> c.gridGlow = v, v -> v + "%"));
                 add(2, new Hdr("Дым и частицы"));
                 add(2, new Sld("Дым", 0, 30, 1, () -> c.smokeCount, v -> c.smokeCount = v, String::valueOf));
                 add(2, new Sld("Скорость частиц", 20, 300, 10, () -> c.particleSpeed, v -> c.particleSpeed = v, v -> v + "%"));
@@ -167,7 +175,7 @@ public class LumenScreen extends Screen {
                 add(1, new Tog("Без анимации подъёма", () -> c.vmNoEquip, v -> c.vmNoEquip = v));
 
                 add(2, new Hdr("Swing animation"));
-                add(2, new Cyc("Стиль", new String[]{"vanilla", "smooth", "slow", "snap", "stab", "slash", "spin", "bounce", "none"},
+                add(2, new Cyc("Стиль", new String[]{"vanilla", "smooth", "slow", "snap", "stab", "slash", "spin", "bounce", "tilt", "none"},
                         () -> c.vmSwing, v -> c.vmSwing = v));
                 add(2, new Sld("Скорость взмаха", 100, 300, 10, () -> c.vmSwingSpeed, v -> c.vmSwingSpeed = v, v -> v + "%"));
                 add(2, new Hdr("Сброс"));

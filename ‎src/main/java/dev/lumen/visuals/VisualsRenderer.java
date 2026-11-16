@@ -211,6 +211,75 @@ public final class VisualsRenderer {
     private static final boolean[] CV = new boolean[8];
     private static final int[][] EDGES = {{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3}, {4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
 
+    /** Wavy Grid Sky: angular lattice projected onto the sky dome. */
+    public static void drawWavyGrid(DrawContext c, LumenConfig cfg, int sw, int sh) {
+        if (!cfg.gridSky || !ready) return;
+        double time = System.currentTimeMillis() / 1000.0 * cfg.gridSpeed / 100.0;
+        double wave = cfg.gridWave / 100.0;
+        int rgb = LumenConfig.parseHex(cfg.gridColor);
+        if (rgb < 0) rgb = 0xFF3030;
+        int alpha = MathHelper.clamp(45 + cfg.gridGlow * 2, 45, 245);
+        int core = (alpha << 24) | rgb;
+        int halo = (MathHelper.clamp(alpha / 3, 20, 100) << 24) | rgb;
+        Matrix4f mat = c.getMatrices().peek().getPositionMatrix();
+        double radius = 260.0;
+        int azSteps = 36;
+        int elSteps = Math.max(5, 90 / cfg.gridCellSize);
+        // горизонтальные волнистые ряды
+        for (int row = 0; row <= elSteps; row++) {
+            double baseEl = Math.toRadians(5 + row * (65.0 / elSteps));
+            boolean prev = false; float ox = 0, oy = 0;
+            for (int col = 0; col <= azSteps; col++) {
+                double az = col * Math.PI * 2.0 / azSteps;
+                double bend = Math.sin(az * 3.0 + time * 1.4 + row * 0.7) * wave * 0.10;
+                double el = baseEl + bend + Math.sin(az * 6.0 - time + row) * wave * 0.025;
+                double dx = Math.cos(el) * -Math.sin(az), dy = Math.sin(el), dz = Math.cos(el) * Math.cos(az);
+                boolean ok = project(camX + dx * radius, camY + dy * radius, camZ + dz * radius, sw, sh);
+                if (ok && prev) {
+                    line(c, ox, oy, SCR[0], SCR[1], halo, 5);
+                    line(c, ox, oy, SCR[0], SCR[1], core, 1);
+                }
+                prev = ok; ox = SCR[0]; oy = SCR[1];
+            }
+        }
+        // вертикальные меридианы
+        for (int col = 0; col < azSteps; col++) {
+            double baseAz = col * Math.PI * 2.0 / azSteps;
+            boolean prev = false; float ox = 0, oy = 0;
+            for (int row = 0; row <= elSteps; row++) {
+                double el = Math.toRadians(5 + row * (65.0 / elSteps));
+                double az = baseAz + Math.sin(el * 4.0 + time + col) * wave * 0.035;
+                double dx = Math.cos(el) * -Math.sin(az), dy = Math.sin(el), dz = Math.cos(el) * Math.cos(az);
+                boolean ok = project(camX + dx * radius, camY + dy * radius, camZ + dz * radius, sw, sh);
+                if (ok && prev) {
+                    line(c, ox, oy, SCR[0], SCR[1], halo, 5);
+                    line(c, ox, oy, SCR[0], SCR[1], core, 1);
+                }
+                prev = ok; ox = SCR[0]; oy = SCR[1];
+            }
+        }
+        // Short branching filaments emerging from selected grid intersections.
+        for (int n = 0; n < 14; n++) {
+            double az = n * Math.PI * 2.0 / 14.0 + 0.11 * Math.sin(time + n);
+            double el = Math.toRadians(18 + (n % 5) * 9);
+            double dx = Math.cos(el) * -Math.sin(az), dy = Math.sin(el), dz = Math.cos(el) * Math.cos(az);
+            if (!project(camX + dx * radius, camY + dy * radius, camZ + dz * radius, sw, sh)) continue;
+            float sx = SCR[0], sy = SCR[1];
+            double branchAz = az + 0.035 * Math.sin(time * 2 + n);
+            double branchEl = el + 0.055 * Math.sin(time * 1.7 + n * 2);
+            double bdx = Math.cos(branchEl) * -Math.sin(branchAz);
+            double bdy = Math.sin(branchEl);
+            double bdz = Math.cos(branchEl) * Math.cos(branchAz);
+            if (project(camX + bdx * radius, camY + bdy * radius, camZ + bdz * radius, sw, sh)) {
+                line(c, sx, sy, SCR[0], SCR[1], halo, 4);
+                line(c, sx, sy, SCR[0], SCR[1], core, 1);
+                float mx = (sx + SCR[0]) * 0.5f, my = (sy + SCR[1]) * 0.5f;
+                line(c, mx, my, mx + (SCR[0] - sx) * 0.23f + (float)Math.sin(time+n)*5,
+                        my + (SCR[1] - sy) * 0.20f - 4, core, 1);
+            }
+        }
+    }
+
     private static void drawTargetEsp(DrawContext c, MinecraftClient mc, LumenConfig cfg, int sw, int sh) {
         LivingEntity t = TargetTracker.get();
         if (t == null || t == mc.player) return;
@@ -225,6 +294,10 @@ public final class VisualsRenderer {
         int col = cfg.tespArgb;
         int glow = (col & 0x00FFFFFF) | 0x40000000;
         String style = cfg.tespStyle;
+        if ("souls".equals(style) || "aura".equals(style) || "cylinder".equals(style)) {
+            drawSoulStreams(c, px, py, pz, w, h, col, sw, sh, style);
+            return;
+        }
 
         if (!"box".equals(style)) {
             double r = w * 0.75 + 0.2;
@@ -246,6 +319,34 @@ public final class VisualsRenderer {
                 if (!CV[e[0]] || !CV[e[1]]) continue;
                 line(c, CX[e[0]], CY[e[0]], CX[e[1]], CY[e[1]], glow, 4);
                 line(c, CX[e[0]], CY[e[0]], CX[e[1]], CY[e[1]], col, 2);
+            }
+        }
+    }
+
+    /** Smooth orbiting soul-like ribbons around the tracked target. */
+    private static void drawSoulStreams(DrawContext c, double x, double y, double z, float width,
+                                        float height, int color, int sw, int sh, String style) {
+        double time = System.currentTimeMillis() / 1000.0;
+        int streams = "aura".equals(style) ? 5 : ("cylinder".equals(style) ? 3 : 4);
+        int glow = (color & 0x00FFFFFF) | 0x55000000;
+        for (int stream = 0; stream < streams; stream++) {
+            double phase = time * (1.25 + stream * 0.11) + stream * Math.PI * 2.0 / streams;
+            float lastX = 0, lastY = 0; boolean prev = false;
+            int steps = 52;
+            for (int i = 0; i <= steps; i++) {
+                double t = i / (double) steps;
+                double ang = phase + t * Math.PI * 3.2;
+                double radius = width * (0.48 + 0.12 * Math.sin(t * Math.PI * 4 + phase));
+                if ("cylinder".equals(style)) radius *= 1.18;
+                double yy = y + 0.08 + t * height * 0.98;
+                double xx = x + Math.cos(ang) * radius;
+                double zz = z + Math.sin(ang) * radius;
+                boolean ok = project(xx, yy, zz, sw, sh);
+                if (ok && prev) {
+                    line(c, lastX, lastY, SCR[0], SCR[1], glow, 7);
+                    line(c, lastX, lastY, SCR[0], SCR[1], color, 2);
+                }
+                prev = ok; lastX = SCR[0]; lastY = SCR[1];
             }
         }
     }

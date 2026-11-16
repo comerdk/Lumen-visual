@@ -39,7 +39,7 @@ public final class LumenConfig {
 
     // target ESP / target HUD
     public boolean tesp = true;
-    public String tespStyle = "ring"; // ring | box | both
+    public String tespStyle = "souls"; // ring | box | both | souls | aura | cylinder
     public String tespColor = "B388FF";
     public boolean thud = true;
     public int thudX = 60;
@@ -69,6 +69,13 @@ public final class LumenConfig {
     public String plasma = "nebula";      // off | aurora | nebula | solar | toxic
     public int plasmaIntensity = 55;      // 0..100
     public int plasmaSpeed = 100;         // 20..300 %
+    // Wavy Grid Sky
+    public boolean gridSky = false;
+    public String gridColor = "FF3030";
+    public int gridCellSize = 18;       // angular cell size
+    public int gridWave = 55;            // 0..100
+    public int gridSpeed = 100;          // 20..300 %
+    public int gridGlow = 65;            // 0..100
 
     // тема интерфейса (HSV)
     public int themeH = 268;
@@ -226,6 +233,10 @@ public final class LumenConfig {
         smokeCount = Math.max(0, Math.min(30, smokeCount));
         plasmaIntensity = Math.max(0, Math.min(100, plasmaIntensity));
         plasmaSpeed = Math.max(20, Math.min(300, plasmaSpeed));
+        gridCellSize = Math.max(8, Math.min(40, gridCellSize));
+        gridWave = Math.max(0, Math.min(100, gridWave));
+        gridSpeed = Math.max(20, Math.min(300, gridSpeed));
+        gridGlow = Math.max(0, Math.min(100, gridGlow));
         glassOpacity = Math.max(20, Math.min(95, glassOpacity));
         themeH = ((themeH % 360) + 360) % 360;
         themeS = Math.max(0, Math.min(100, themeS));

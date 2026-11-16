@@ -63,6 +63,7 @@ public final class WorldEffects {
         }
 
         plasma(c, mc, cfg, sw, sh, dt, sat);
+        VisualsRenderer.drawWavyGrid(c, cfg, sw, sh);
 
         if (VisualsRenderer.ready && mc.player != null && mc.world != null && !mc.isPaused()) {
             FxParticles.update(dt, cfg);
