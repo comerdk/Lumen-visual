@@ -44,14 +44,6 @@ public abstract class HeldItemRendererMixin {
         float sp = Math.min(1f, player.getHandSwingProgress(tickDelta) * c.vmSwingSpeed / 100f);
         if (sp <= 0f) return;
         float s = MathHelper.sin(sp * (float) Math.PI);
-        if ("tilt".equals(style)) {
-            // Предмет плавно наклоняется к игроку на пике удара и возвращается в исходное положение.
-            float eased = s * s * (3f - 2f * s);
-            matrices.translate(0.02f * side * eased, -0.08f * eased, -0.16f * eased);
-            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-34f * eased));
-            matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(-12f * side * eased));
-            return;
-        }
         switch (style) {
             case "stab" -> {
                 matrices.translate(0f, 0f, -s * 0.55f);
