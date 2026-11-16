@@ -209,76 +209,11 @@ public final class VisualsRenderer {
     private static final float[] CX = new float[8];
     private static final float[] CY = new float[8];
     private static final boolean[] CV = new boolean[8];
+    private static final int[][] CRYSTAL_EDGES = {{0,2},{0,3},{0,4},{0,5},{1,2},{1,3},{1,4},{1,5},{2,3},{3,4},{4,5},{5,2},{0,1}};
+    private static final double[][] CRYSTAL_VERTS = new double[6][3];
+    private static final float[] CRYSTAL_SX = new float[6], CRYSTAL_SY = new float[6];
+    private static final boolean[] CRYSTAL_OK = new boolean[6];
     private static final int[][] EDGES = {{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3}, {4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
-
-    /** Wavy Grid Sky: angular lattice projected onto the sky dome. */
-    public static void drawWavyGrid(DrawContext c, LumenConfig cfg, int sw, int sh) {
-        if (!cfg.gridSky || !ready) return;
-        double time = System.currentTimeMillis() / 1000.0 * cfg.gridSpeed / 100.0;
-        double wave = cfg.gridWave / 100.0;
-        int rgb = LumenConfig.parseHex(cfg.gridColor);
-        if (rgb < 0) rgb = 0xFF3030;
-        int alpha = MathHelper.clamp(45 + cfg.gridGlow * 2, 45, 245);
-        int core = (alpha << 24) | rgb;
-        int halo = (MathHelper.clamp(alpha / 3, 20, 100) << 24) | rgb;
-        Matrix4f mat = c.getMatrices().peek().getPositionMatrix();
-        double radius = 260.0;
-        int azSteps = 36;
-        int elSteps = Math.max(5, 90 / cfg.gridCellSize);
-        // горизонтальные волнистые ряды
-        for (int row = 0; row <= elSteps; row++) {
-            double baseEl = Math.toRadians(5 + row * (65.0 / elSteps));
-            boolean prev = false; float ox = 0, oy = 0;
-            for (int col = 0; col <= azSteps; col++) {
-                double az = col * Math.PI * 2.0 / azSteps;
-                double bend = Math.sin(az * 3.0 + time * 1.4 + row * 0.7) * wave * 0.10;
-                double el = baseEl + bend + Math.sin(az * 6.0 - time + row) * wave * 0.025;
-                double dx = Math.cos(el) * -Math.sin(az), dy = Math.sin(el), dz = Math.cos(el) * Math.cos(az);
-                boolean ok = project(camX + dx * radius, camY + dy * radius, camZ + dz * radius, sw, sh);
-                if (ok && prev) {
-                    line(c, ox, oy, SCR[0], SCR[1], halo, 5);
-                    line(c, ox, oy, SCR[0], SCR[1], core, 1);
-                }
-                prev = ok; ox = SCR[0]; oy = SCR[1];
-            }
-        }
-        // вертикальные меридианы
-        for (int col = 0; col < azSteps; col++) {
-            double baseAz = col * Math.PI * 2.0 / azSteps;
-            boolean prev = false; float ox = 0, oy = 0;
-            for (int row = 0; row <= elSteps; row++) {
-                double el = Math.toRadians(5 + row * (65.0 / elSteps));
-                double az = baseAz + Math.sin(el * 4.0 + time + col) * wave * 0.035;
-                double dx = Math.cos(el) * -Math.sin(az), dy = Math.sin(el), dz = Math.cos(el) * Math.cos(az);
-                boolean ok = project(camX + dx * radius, camY + dy * radius, camZ + dz * radius, sw, sh);
-                if (ok && prev) {
-                    line(c, ox, oy, SCR[0], SCR[1], halo, 5);
-                    line(c, ox, oy, SCR[0], SCR[1], core, 1);
-                }
-                prev = ok; ox = SCR[0]; oy = SCR[1];
-            }
-        }
-        // Short branching filaments emerging from selected grid intersections.
-        for (int n = 0; n < 14; n++) {
-            double az = n * Math.PI * 2.0 / 14.0 + 0.11 * Math.sin(time + n);
-            double el = Math.toRadians(18 + (n % 5) * 9);
-            double dx = Math.cos(el) * -Math.sin(az), dy = Math.sin(el), dz = Math.cos(el) * Math.cos(az);
-            if (!project(camX + dx * radius, camY + dy * radius, camZ + dz * radius, sw, sh)) continue;
-            float sx = SCR[0], sy = SCR[1];
-            double branchAz = az + 0.035 * Math.sin(time * 2 + n);
-            double branchEl = el + 0.055 * Math.sin(time * 1.7 + n * 2);
-            double bdx = Math.cos(branchEl) * -Math.sin(branchAz);
-            double bdy = Math.sin(branchEl);
-            double bdz = Math.cos(branchEl) * Math.cos(branchAz);
-            if (project(camX + bdx * radius, camY + bdy * radius, camZ + bdz * radius, sw, sh)) {
-                line(c, sx, sy, SCR[0], SCR[1], halo, 4);
-                line(c, sx, sy, SCR[0], SCR[1], core, 1);
-                float mx = (sx + SCR[0]) * 0.5f, my = (sy + SCR[1]) * 0.5f;
-                line(c, mx, my, mx + (SCR[0] - sx) * 0.23f + (float)Math.sin(time+n)*5,
-                        my + (SCR[1] - sy) * 0.20f - 4, core, 1);
-            }
-        }
-    }
 
     private static void drawTargetEsp(DrawContext c, MinecraftClient mc, LumenConfig cfg, int sw, int sh) {
         LivingEntity t = TargetTracker.get();
@@ -294,11 +229,11 @@ public final class VisualsRenderer {
         int col = cfg.tespArgb;
         int glow = (col & 0x00FFFFFF) | 0x40000000;
         String style = cfg.tespStyle;
-        if ("souls".equals(style) || "aura".equals(style) || "cylinder".equals(style)) {
-            drawSoulStreams(c, px, py, pz, w, h, col, sw, sh, style);
+
+        if ("crystals".equals(style)) {
+            drawTargetCrystals(c, cfg, px, py, pz, w, h, sw, sh);
             return;
         }
-
         if (!"box".equals(style)) {
             double r = w * 0.75 + 0.2;
             double phase = (Math.sin(System.currentTimeMillis() / 450.0) + 1.0) / 2.0;
@@ -323,30 +258,43 @@ public final class VisualsRenderer {
         }
     }
 
-    /** Smooth orbiting soul-like ribbons around the tracked target. */
-    private static void drawSoulStreams(DrawContext c, double x, double y, double z, float width,
-                                        float height, int color, int sw, int sh, String style) {
-        double time = System.currentTimeMillis() / 1000.0;
-        int streams = "aura".equals(style) ? 5 : ("cylinder".equals(style) ? 3 : 4);
-        int glow = (color & 0x00FFFFFF) | 0x55000000;
-        for (int stream = 0; stream < streams; stream++) {
-            double phase = time * (1.25 + stream * 0.11) + stream * Math.PI * 2.0 / streams;
-            float lastX = 0, lastY = 0; boolean prev = false;
-            int steps = 52;
-            for (int i = 0; i <= steps; i++) {
-                double t = i / (double) steps;
-                double ang = phase + t * Math.PI * 3.2;
-                double radius = width * (0.48 + 0.12 * Math.sin(t * Math.PI * 4 + phase));
-                if ("cylinder".equals(style)) radius *= 1.18;
-                double yy = y + 0.08 + t * height * 0.98;
-                double xx = x + Math.cos(ang) * radius;
-                double zz = z + Math.sin(ang) * radius;
-                boolean ok = project(xx, yy, zz, sw, sh);
-                if (ok && prev) {
-                    line(c, lastX, lastY, SCR[0], SCR[1], glow, 7);
-                    line(c, lastX, lastY, SCR[0], SCR[1], color, 2);
-                }
-                prev = ok; lastX = SCR[0]; lastY = SCR[1];
+
+    /** Orbiting 3D diamond crystals around the tracked target. */
+    private static void drawTargetCrystals(DrawContext c, LumenConfig cfg, double tx, double ty, double tz,
+                                           float targetWidth, float targetHeight, int sw, int sh) {
+        double time = System.nanoTime() / 1_000_000_000.0 * (cfg.crystalSpeed / 100.0);
+        double orbit = targetWidth * 0.72 + 0.32;
+        double size = 0.18 * (cfg.crystalSize / 100.0);
+        int base = 0xFF000000 | cfg.crystalArgb;
+        int glow = (cfg.crystalArgb & 0x00FFFFFF) | 0x55000000;
+        for (int i = 0; i < 5; i++) {
+            double a = time * (0.85 + i * 0.09) + i * (Math.PI * 2.0 / 5.0);
+            double bob = Math.sin(time * 1.7 + i * 1.4) * 0.18;
+            double cx = tx + Math.cos(a) * orbit;
+            double cy = ty + targetHeight * (0.28 + i * 0.105) + bob;
+            double cz = tz + Math.sin(a) * orbit;
+            double spin = time * (1.1 + i * 0.12) + i;
+            double cs = Math.cos(spin), sn = Math.sin(spin);
+            double[][] v = CRYSTAL_VERTS;
+            v[0][0] = cx; v[0][1] = cy + size; v[0][2] = cz;
+            v[1][0] = cx; v[1][1] = cy - size; v[1][2] = cz;
+            for (int k = 0; k < 4; k++) {
+                double q = Math.PI * 0.25 + k * Math.PI * 0.5;
+                double lx = Math.cos(q) * size * 0.72;
+                double lz = Math.sin(q) * size * 0.72;
+                v[k + 2][0] = cx + lx * cs - lz * sn;
+                v[k + 2][1] = cy + Math.sin(spin * 0.7 + k) * size * 0.08;
+                v[k + 2][2] = cz + lx * sn + lz * cs;
+            }
+            for (int k = 0; k < 6; k++) {
+                CRYSTAL_OK[k] = project(v[k][0], v[k][1], v[k][2], sw, sh);
+                CRYSTAL_SX[k] = SCR[0]; CRYSTAL_SY[k] = SCR[1];
+            }
+            for (int[] edge : CRYSTAL_EDGES) {
+                int a0 = edge[0], b0 = edge[1];
+                if (!CRYSTAL_OK[a0] || !CRYSTAL_OK[b0]) continue;
+                line(c, CRYSTAL_SX[a0], CRYSTAL_SY[a0], CRYSTAL_SX[b0], CRYSTAL_SY[b0], glow, 4);
+                line(c, CRYSTAL_SX[a0], CRYSTAL_SY[a0], CRYSTAL_SX[b0], CRYSTAL_SY[b0], base, 2);
             }
         }
     }

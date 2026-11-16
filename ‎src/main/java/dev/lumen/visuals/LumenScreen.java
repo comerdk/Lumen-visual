@@ -9,7 +9,9 @@ import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -26,12 +28,14 @@ public class LumenScreen extends Screen {
     private static final String[] ESP_COLORS = {"39FF6B", "FF3B4D", "55D6FF", "B388FF", "FF6EC7", "FFD24D", "FF9A4D",
             "5DE6B0", "FFFFFF", "00E5FF", "A6E34F", "FF2E93", "5E8BFF", "C77DFF"};
     private static int tab = 0;
+    private static final Set<String> COLLAPSED = new HashSet<>();
 
     private float us = 1f, px, py, dt;
     private double ps = 1.0;
     private long lastNs = System.nanoTime();
     private final List<W> ws = new ArrayList<>();
     private final int[] cy = new int[3];
+    private final int[] scroll = new int[3];
     private W drag;
 
     public LumenScreen() {
@@ -45,8 +49,10 @@ public class LumenScreen extends Screen {
 
     // ================= раскладка вкладок =================
     private void add(int col, W w) {
+        w.col = col;
         w.x = CX0 + col * (CW + CGAP);
         w.y = cy[col];
+        if (w instanceof Tog t) { t.key = tab + ":" + col + ":" + t.label; t.collapsed = COLLAPSED.contains(t.key); }
         w.w = CW;
         cy[col] += (int) w.h;
         ws.add(w);
@@ -83,7 +89,9 @@ public class LumenScreen extends Screen {
                 add(2, new Note("Помощь: .lumen help"));
                 add(2, new Note("Клавиши: J ESP, K Tracers,"));
                 add(2, new Note("U Nametags, L Fullbright"));
-                add(2, new Note("ПКМ по пункту — назад"));
+                add(2, new Note("ЛКМ — включить / выключить"));
+                add(2, new Note("ПКМ — свернуть / развернуть параметры"));
+                add(2, new Note("Колесо мыши — прокрутка вверх / вниз"));
             }
             case 1 -> { // ---------- ESP ----------
                 add(0, new Hdr("Entity ESP (сквозь стены)"));
@@ -110,7 +118,11 @@ public class LumenScreen extends Screen {
             case 2 -> { // ---------- Target ----------
                 add(0, new Hdr("Target ESP"));
                 add(0, new Tog("Включить", () -> c.tesp, v -> c.tesp = v));
-                add(0, new Cyc("Стиль", new String[]{"souls", "ring", "box", "both", "aura", "cylinder"}, () -> c.tespStyle, v -> c.tespStyle = v));
+                add(0, new Cyc("Стиль", new String[]{"crystals", "ring", "box", "both"}, () -> c.tespStyle, v -> c.tespStyle = v));
+                add(0, new Sld("Размер кристаллов", 30, 250, 5, () -> c.crystalSize, v -> c.crystalSize = v, v -> v + "%"));
+                add(0, new Sld("Скорость кристаллов", 20, 300, 10, () -> c.crystalSpeed, v -> c.crystalSpeed = v, v -> v + "%"));
+                add(0, new Hdr("Цвет кристаллов"));
+                add(0, new Swatches(ESP_COLORS, hx -> { c.crystalColor = hx; }, () -> c.crystalArgb));
 
                 add(1, new Hdr("Target HUD"));
                 add(1, new Tog("Включить", () -> c.thud, v -> c.thud = v));
@@ -148,14 +160,6 @@ public class LumenScreen extends Screen {
                 add(2, new Cyc("Вариант", new String[]{"off", "aurora", "nebula", "solar", "toxic"}, () -> c.plasma, v -> c.plasma = v));
                 add(2, new Sld("Яркость", 0, 100, 5, () -> c.plasmaIntensity, v -> c.plasmaIntensity = v, v -> v + "%"));
                 add(2, new Sld("Скорость", 20, 300, 10, () -> c.plasmaSpeed, v -> c.plasmaSpeed = v, v -> v + "%"));
-                add(2, new Hdr("Wavy Grid Sky"));
-                add(2, new Tog("Волнистая сетка", () -> c.gridSky, v -> c.gridSky = v));
-                add(2, new Note("Цвет линий"));
-                add(2, new Swatches(SWATCHES, v -> c.gridColor = v, () -> LumenConfig.parseHex(c.gridColor)));
-                add(2, new Sld("Размер ячеек", 8, 40, 1, () -> c.gridCellSize, v -> c.gridCellSize = v, String::valueOf));
-                add(2, new Sld("Изгиб волн", 0, 100, 5, () -> c.gridWave, v -> c.gridWave = v, v -> v + "%"));
-                add(2, new Sld("Скорость волн", 20, 300, 10, () -> c.gridSpeed, v -> c.gridSpeed = v, v -> v + "%"));
-                add(2, new Sld("Свечение сетки", 0, 100, 5, () -> c.gridGlow, v -> c.gridGlow = v, v -> v + "%"));
                 add(2, new Hdr("Дым и частицы"));
                 add(2, new Sld("Дым", 0, 30, 1, () -> c.smokeCount, v -> c.smokeCount = v, String::valueOf));
                 add(2, new Sld("Скорость частиц", 20, 300, 10, () -> c.particleSpeed, v -> c.particleSpeed = v, v -> v + "%"));
@@ -175,7 +179,7 @@ public class LumenScreen extends Screen {
                 add(1, new Tog("Без анимации подъёма", () -> c.vmNoEquip, v -> c.vmNoEquip = v));
 
                 add(2, new Hdr("Swing animation"));
-                add(2, new Cyc("Стиль", new String[]{"vanilla", "smooth", "slow", "snap", "stab", "slash", "spin", "bounce", "tilt", "none"},
+                add(2, new Cyc("Стиль", new String[]{"vanilla", "smooth", "slow", "snap", "stab", "slash", "spin", "bounce", "none"},
                         () -> c.vmSwing, v -> c.vmSwing = v));
                 add(2, new Sld("Скорость взмаха", 100, 300, 10, () -> c.vmSwingSpeed, v -> c.vmSwingSpeed = v, v -> v + "%"));
                 add(2, new Hdr("Сброс"));
@@ -286,7 +290,21 @@ public class LumenScreen extends Screen {
             ctx.drawCenteredTextWithShadow(textRenderer, TABS[i], (int) (tx + 37), (int) ty + 6, active ? 0xFFFFFFFF : 0xFFD8CCF2);
         }
 
-        for (W w : ws) w.draw(this, ctx, lx, ly);
+        for (int col = 0; col < 3; col++) {
+            int left = Math.round(px + (CX0 + col * (CW + CGAP)) * us);
+            int right = Math.round(px + (CX0 + col * (CW + CGAP) + CW) * us);
+            int top = Math.round(py + CY0 * us);
+            int bottom = Math.round(py + (PH - 24) * us);
+            ctx.enableScissor(left, top, right, bottom);
+            for (W w : ws) {
+                if (w.col != col || hidden(w)) continue;
+                float oldY = w.y;
+                w.y = oldY - scroll[col];
+                w.draw(this, ctx, lx, ly);
+                w.y = oldY;
+            }
+            ctx.disableScissor();
+        }
 
         String foot = "RShift / ×  — закрыть   •   чат: .lumen help";
         ctx.drawText(textRenderer, foot, PW / 2 - textRenderer.getWidth(foot) / 2, PH - 14, 0x88FFFFFF, false);
@@ -334,12 +352,16 @@ public class LumenScreen extends Screen {
             for (int i = 0; i < TABS.length; i++) {
                 if (in(lx, ly, 20 + i * 78, 34, 74, 20)) {
                     tab = i;
+                    scroll[0] = scroll[1] = scroll[2] = 0;
                     build();
                     return true;
                 }
             }
+            if (ly < CY0 || ly >= PH - 24) return true;
             for (W w : ws) {
-                if (w.hit(lx, ly) && w.down(this, lx, ly, button)) {
+                if (hidden(w)) continue;
+                double wy = ly + scroll[w.col];
+                if (w.hit(lx, wy) && w.down(this, lx, wy, button)) {
                     if (w.draggable) drag = w;
                     cfg.recolor();
                     cfg.save();
@@ -372,6 +394,30 @@ public class LumenScreen extends Screen {
     }
 
     @Override
+    public boolean mouseScrolled(double mx, double my, double horizontalAmount, double verticalAmount) {
+        double lx = (mx - px) / us;
+        double ly = (my - py) / us;
+        if (lx < CX0 || lx > CX0 + 3 * CW + 2 * CGAP || ly < CY0 || ly > PH - 24) {
+            return super.mouseScrolled(mx, my, horizontalAmount, verticalAmount);
+        }
+        int col = Math.max(0, Math.min(2, (int) ((lx - CX0) / (CW + CGAP))));
+        int max = Math.max(0, cy[col] - CY0 - (PH - 24 - CY0));
+        scroll[col] = Math.max(0, Math.min(max, scroll[col] - (int) Math.round(verticalAmount * 24)));
+        return true;
+    }
+
+    private boolean hidden(W target) {
+        boolean hide = false;
+        for (W item : ws) {
+            if (item.col != target.col) continue;
+            if (item instanceof Hdr) hide = false;
+            if (item == target) return hide;
+            if (item instanceof Tog t && t.collapsed) hide = true;
+        }
+        return false;
+    }
+
+    @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) {
             close();
@@ -395,6 +441,7 @@ public class LumenScreen extends Screen {
     // ================= виджеты =================
     private abstract static class W {
         float x, y, w, h;
+        int col;
         boolean draggable;
 
         abstract void draw(LumenScreen s, DrawContext c, double mx, double my);
@@ -446,6 +493,8 @@ public class LumenScreen extends Screen {
         final BooleanSupplier get;
         final Consumer<Boolean> set;
         float anim;
+        String key = "";
+        boolean collapsed;
 
         Tog(String label, BooleanSupplier get, Consumer<Boolean> set) {
             this.label = label;
@@ -462,6 +511,7 @@ public class LumenScreen extends Screen {
             anim += ((on ? 1f : 0f) - anim) * Math.min(1f, s.dt * 14f);
             if (hit(mx, my)) Gfx.rrect(c, x, y, w, h - 1, 7, 0x24FFFFFF, 0x12FFFFFF, s.ps);
             c.drawText(s.textRenderer, label, (int) x + 6, (int) y + 6, 0xFFFFFFFF, true);
+            c.drawText(s.textRenderer, collapsed ? "›" : "⌄", (int) (x + w - 47), (int) y + 5, 0x99FFFFFF, false);
             float sx = x + w - 32, sy = y + 4;
             Gfx.rrect(c, sx, sy, 26, 12, 6,
                     Gfx.lerp(0x40FFFFFF, Gfx.withA(cfg.themeLight, 0xE6), anim),
@@ -473,7 +523,12 @@ public class LumenScreen extends Screen {
 
         @Override
         boolean down(LumenScreen s, double mx, double my, int b) {
-            set.accept(!get.getAsBoolean());
+            if (b == 1) {
+                collapsed = !collapsed;
+                if (collapsed) COLLAPSED.add(key); else COLLAPSED.remove(key);
+            } else if (b == 0) {
+                set.accept(!get.getAsBoolean());
+            } else return false;
             return true;
         }
     }

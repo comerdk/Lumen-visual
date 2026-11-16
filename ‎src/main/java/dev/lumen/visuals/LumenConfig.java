@@ -39,7 +39,10 @@ public final class LumenConfig {
 
     // target ESP / target HUD
     public boolean tesp = true;
-    public String tespStyle = "souls"; // ring | box | both | souls | aura | cylinder
+    public String tespStyle = "crystals"; // crystals | ring | box | both
+    public int crystalSize = 100;
+    public int crystalSpeed = 100;
+    public String crystalColor = "B388FF";
     public String tespColor = "B388FF";
     public boolean thud = true;
     public int thudX = 60;
@@ -69,13 +72,6 @@ public final class LumenConfig {
     public String plasma = "nebula";      // off | aurora | nebula | solar | toxic
     public int plasmaIntensity = 55;      // 0..100
     public int plasmaSpeed = 100;         // 20..300 %
-    // Wavy Grid Sky
-    public boolean gridSky = false;
-    public String gridColor = "FF3030";
-    public int gridCellSize = 18;       // angular cell size
-    public int gridWave = 55;            // 0..100
-    public int gridSpeed = 100;          // 20..300 %
-    public int gridGlow = 65;            // 0..100
 
     // тема интерфейса (HSV)
     public int themeH = 268;
@@ -118,7 +114,7 @@ public final class LumenConfig {
     public boolean cosFollowTheme = true;
     public String cosColor = "FFD6F5";
 
-    public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb;
+    public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb, crystalArgb;
     public transient int themeRgb, themeLight, themeDark, cosRgb;
 
     public static int parseHex(String s) {
@@ -220,6 +216,9 @@ public final class LumenConfig {
         passiveArgb = parse(passiveColor, 0x55FF99);
         if (range < 8) range = 8;
         tespArgb = parse(tespColor, 0xB388FF);
+        crystalArgb = parse(crystalColor, 0xB388FF);
+        crystalSize = Math.max(30, Math.min(250, crystalSize));
+        crystalSpeed = Math.max(20, Math.min(300, crystalSpeed));
         thudArgb = parse(thudColor, 0xB388FF);
         fogRgb = parse(fogColor, 0x3B1580) & 0xFFFFFF;
         tintRgb = parse(tintColor, 0x7A3FE0) & 0xFFFFFF;
@@ -233,10 +232,6 @@ public final class LumenConfig {
         smokeCount = Math.max(0, Math.min(30, smokeCount));
         plasmaIntensity = Math.max(0, Math.min(100, plasmaIntensity));
         plasmaSpeed = Math.max(20, Math.min(300, plasmaSpeed));
-        gridCellSize = Math.max(8, Math.min(40, gridCellSize));
-        gridWave = Math.max(0, Math.min(100, gridWave));
-        gridSpeed = Math.max(20, Math.min(300, gridSpeed));
-        gridGlow = Math.max(0, Math.min(100, gridGlow));
         glassOpacity = Math.max(20, Math.min(95, glassOpacity));
         themeH = ((themeH % 360) + 360) % 360;
         themeS = Math.max(0, Math.min(100, themeS));
