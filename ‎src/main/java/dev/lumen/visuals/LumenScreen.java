@@ -9,7 +9,9 @@ import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -17,21 +19,32 @@ import java.util.function.IntFunction;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
-/** Click GUI в стиле liquid glass: скруглённые сглаженные панели, вкладки, выбор цвета темы. Открывается по RShift. */
+/**
+ * Click GUI в стиле liquid glass. Разделы Combat / Render / Player / Misc, у каждого модуля
+ * сворачиваемые настройки (ПКМ по модулю), прокрутка колесом мыши. Открывается по RShift.
+ */
 public class LumenScreen extends Screen {
     private static final int PW = 580, PH = 280, CW = 172, CGAP = 12, CX0 = 20, CY0 = 64;
-    private static final String[] TABS = {"Visuals", "ESP", "Target", "World", "View", "Cosmetics", "Theme"};
+    /** Видимая область модулей (локальные координаты панели). */
+    private static final int VIEW_T = 60, VIEW_B = PH - 22;
+    private static final String[] TABS = {"Combat", "Render", "Player", "Misc"};
+    private static final int TAB_W = 130, TAB_GAP = 6;
     private static final String[] SWATCHES = {"B388FF", "FF6EC7", "5E8BFF", "44D7F5", "5DE6B0", "A6E34F", "FFD24D",
             "FF9A4D", "FF5A5A", "FFFFFF", "8E5BFF", "C77DFF", "00E5FF", "FF2E93"};
     private static final String[] ESP_COLORS = {"39FF6B", "FF3B4D", "55D6FF", "B388FF", "FF6EC7", "FFD24D", "FF9A4D",
             "5DE6B0", "FFFFFF", "00E5FF", "A6E34F", "FF2E93", "5E8BFF", "C77DFF"};
     private static int tab = 0;
+    /** Развёрнутые модули (по имени). Изначально пусто — все свёрнуты. */
+    private static final Set<String> OPEN = new HashSet<>();
 
     private float us = 1f, px, py, dt;
     private double ps = 1.0;
     private long lastNs = System.nanoTime();
-    private final List<W> ws = new ArrayList<>();
-    private final int[] cy = new int[3];
+    private List<W> ws = new ArrayList<>();
+    private final List<Mod> mods = new ArrayList<>();
+    private final List<float[]> cards = new ArrayList<>();
+    private int contentH;
+    private float scrollCur, scrollTarget;
     private W drag;
     private Bind listening; // кнопка бинда, ждущая нажатия
 
@@ -44,189 +57,246 @@ public class LumenScreen extends Screen {
         build();
     }
 
-    // ================= раскладка вкладок =================
-    private void add(int col, W w) {
-        w.x = CX0 + col * (CW + CGAP);
-        w.y = cy[col];
-        w.w = CW;
-        cy[col] += (int) w.h;
-        ws.add(w);
+    // ================= модули и раскладка =================
+    private static final class Mod {
+        final String name;
+        final int col;
+        final BooleanSupplier on;     // null — у модуля нет переключателя
+        final Consumer<Boolean> setOn;
+        final List<W> kids = new ArrayList<>();
+
+        Mod(String name, int col, BooleanSupplier on, Consumer<Boolean> setOn) {
+            this.name = name;
+            this.col = col;
+            this.on = on;
+            this.setOn = setOn;
+        }
+
+        Mod add(W w) {
+            kids.add(w);
+            return this;
+        }
+    }
+
+    private Mod mod(String name, int col, BooleanSupplier on, Consumer<Boolean> set) {
+        Mod m = new Mod(name, col, on, set);
+        mods.add(m);
+        return m;
+    }
+
+    private Mod mod(String name, int col) {
+        return mod(name, col, null, null);
+    }
+
+    /** Расставляет заголовки модулей и (у развёрнутых) их настройки по трём колонкам. */
+    private void layout() {
+        List<W> out = new ArrayList<>();
+        cards.clear();
+        int[] y = {CY0, CY0, CY0};
+        for (Mod m : mods) {
+            int col = m.col;
+            float x = CX0 + col * (CW + CGAP);
+            boolean open = !m.kids.isEmpty() && OPEN.contains(m.name);
+            ModHdr hd = new ModHdr(m, open);
+            hd.x = x;
+            hd.y = y[col];
+            hd.w = CW;
+            out.add(hd);
+            float top = y[col];
+            float cy = top + hd.h;
+            if (open) {
+                cy += 2;
+                for (W k : m.kids) {
+                    k.x = x + 4;
+                    k.y = cy;
+                    k.w = CW - 8;
+                    cy += k.h;
+                    out.add(k);
+                }
+                cy += 4;
+            }
+            cards.add(new float[]{x, top, CW, cy - top});
+            y[col] = (int) Math.ceil(cy) + 6;
+        }
+        ws = out;
+        int bottom = Math.max(y[0], Math.max(y[1], y[2])) - 6;
+        contentH = Math.max(0, bottom - CY0);
+        scrollTarget = MathHelper.clamp(scrollTarget, 0f, maxScroll());
+        scrollCur = MathHelper.clamp(scrollCur, 0f, maxScroll());
+    }
+
+    private float maxScroll() {
+        return Math.max(0, contentH - (VIEW_B - CY0) + 2);
     }
 
     private void build() {
         LumenConfig c = LumenConfig.get();
-        ws.clear();
-        cy[0] = cy[1] = cy[2] = CY0;
+        mods.clear();
         drag = null;
         listening = null;
-
         switch (tab) {
-            case 0 -> { // ---------- Visuals ----------
-                add(0, new Hdr("Модули"));
-                add(0, new Tog("ESP", () -> c.esp, v -> c.esp = v));
-                add(0, new Tog("Tracers", () -> c.tracers, v -> c.tracers = v));
-                add(0, new Tog("Nametags + HP", () -> c.nametags, v -> c.nametags = v));
-                add(0, new Tog("Fullbright", () -> c.fullbright, v -> c.fullbright = v));
-                add(0, new Hdr("HUD"));
-                add(0, new Tog("Список модулей", () -> c.hud, v -> c.hud = v));
-                add(0, new Tog("Дистанция в нике", () -> c.showDistance, v -> c.showDistance = v));
-                add(0, new Tog("Tracers из прицела", () -> c.tracersFromCrosshair, v -> c.tracersFromCrosshair = v));
+            case 0 -> buildCombat(c);
+            case 1 -> buildRender(c);
+            case 2 -> buildPlayer(c);
+            default -> buildMisc(c);
+        }
+        layout();
+    }
 
-                add(1, new Hdr("Цели"));
-                add(1, new Tog("Игроки", () -> c.espPlayers, v -> c.espPlayers = v));
-                add(1, new Tog("Враждебные", () -> c.espHostile, v -> c.espHostile = v));
-                add(1, new Tog("Мирные", () -> c.espPassive, v -> c.espPassive = v));
-                add(1, new Tog("Невидимые", () -> c.showInvisible, v -> c.showInvisible = v));
-                add(1, new Sld("Дальность", 16, 256, 8, () -> c.range, v -> c.range = v, v -> v + " м"));
-                add(1, new Sld("Яркость Fullbright", 2, 100, 2, () -> (int) c.fullbrightGamma, v -> c.fullbrightGamma = v, String::valueOf));
+    // ---------- Combat ----------
+    private void buildCombat(LumenConfig c) {
+        mod("Target ESP", 0, () -> c.tesp, v -> c.tesp = v)
+                .add(new Cyc("Стиль", new String[]{"crystal", "ring", "box", "both"}, () -> c.tespStyle, v -> c.tespStyle = v))
+                .add(new Sld("Кристаллы", 3, 12, 1, () -> c.crystalCount, v -> c.crystalCount = v, String::valueOf))
+                .add(new Sld("Размер кристаллов", 40, 200, 5, () -> c.crystalSize, v -> c.crystalSize = v, v -> v + "%"))
+                .add(new Sld("Скорость вращения", 20, 300, 10, () -> c.crystalSpeed, v -> c.crystalSpeed = v, v -> v + "%"));
 
-                add(2, new Hdr("Click actions"));
-                add(2, new Bind("Pearl", () -> c.bindPearl, v -> c.bindPearl = v));
-                add(2, new Bind("Spec в чат", () -> c.bindSpec, v -> c.bindSpec = v));
-                add(2, new Bind("/hub в чат", () -> c.bindHub, v -> c.bindHub = v));
-                add(2, new Note("Клик по кнопке, потом клавиша."));
-                add(2, new Note("Esc при выборе — стереть бинд"));
-                add(2, new Hdr("Подсказки"));
-                add(2, new Note("Меню: RShift или чат .gui"));
-                add(2, new Note("Помощь: .lumen help"));
-                add(2, new Note("Клавиши: J ESP, K Tracers,"));
-                add(2, new Note("U Nametags, L Fullbright"));
-                add(2, new Note("ПКМ по пункту — назад"));
-            }
-            case 1 -> { // ---------- ESP ----------
-                add(0, new Hdr("Entity ESP (сквозь стены)"));
-                add(0, new Tog("Включить", () -> c.esp, v -> c.esp = v));
-                add(0, new Cyc("Режим", new String[]{"fill", "box"}, () -> c.espMode, v -> c.espMode = v));
-                add(0, new Sld("Заливка", 10, 80, 2, () -> c.espFillAlpha, v -> c.espFillAlpha = v, v -> v + "%"));
-                add(0, new Sld("Толщина линий", 1, 6, 1, () -> c.espLine, v -> c.espLine = v, v -> String.valueOf(v / 2f)));
-                add(0, new Tog("Свечение рёбер", () -> c.espGlow, v -> c.espGlow = v));
-                add(0, new Tog("Tracers", () -> c.tracers, v -> c.tracers = v));
-                add(0, new Tog("Nametags + HP", () -> c.nametags, v -> c.nametags = v));
+        mod("Target HUD", 1, () -> c.thud, v -> c.thud = v)
+                .add(new Cyc("Стиль", new String[]{"glass", "flat"}, () -> c.thudStyle, v -> c.thudStyle = v))
+                .add(new Tog("Голова игрока", () -> c.thudSkin, v -> c.thudSkin = v))
+                .add(new Sld("Размер", 50, 200, 5, () -> Math.round(c.thudScale * 100), v -> c.thudScale = v / 100f, v -> v + "%"))
+                .add(new Sld("Смещение X", -250, 250, 5, () -> c.thudX, v -> c.thudX = v, String::valueOf))
+                .add(new Sld("Смещение Y", -200, 200, 5, () -> c.thudY, v -> c.thudY = v, String::valueOf))
+                .add(new Sld("Держать цель", 1, 10, 1, () -> Math.round(c.targetHold), v -> c.targetHold = v, v -> v + " с"));
 
-                add(1, new Hdr("Цвет: игроки"));
-                add(1, new Swatches(ESP_COLORS, hx -> { c.playerColor = hx; }, () -> c.playerArgb));
-                add(1, new Hdr("Цвет: враждебные"));
-                add(1, new Swatches(ESP_COLORS, hx -> { c.hostileColor = hx; }, () -> c.hostileArgb));
+        mod("Prediction", 2, () -> c.predict, v -> c.predict = v)
+                .add(new Note("Траектории: лук, арбалет,"))
+                .add(new Note("трезубец, зелья, пёрлы"));
+    }
 
-                add(2, new Hdr("Цвет: мирные"));
-                add(2, new Swatches(ESP_COLORS, hx -> { c.passiveColor = hx; }, () -> c.passiveArgb));
-                add(2, new Hdr("Цели"));
-                add(2, new Tog("Игроки", () -> c.espPlayers, v -> c.espPlayers = v));
-                add(2, new Tog("Враждебные", () -> c.espHostile, v -> c.espHostile = v));
-                add(2, new Tog("Мирные", () -> c.espPassive, v -> c.espPassive = v));
-            }
-            case 2 -> { // ---------- Target ----------
-                add(0, new Hdr("Target ESP"));
-                add(0, new Tog("Включить", () -> c.tesp, v -> c.tesp = v));
-                add(0, new Cyc("Стиль", new String[]{"crystal", "ring", "box", "both"}, () -> c.tespStyle, v -> c.tespStyle = v));
-                add(0, new Sld("Кристаллы", 3, 12, 1, () -> c.crystalCount, v -> c.crystalCount = v, String::valueOf));
-                add(0, new Sld("Размер кристаллов", 40, 200, 5, () -> c.crystalSize, v -> c.crystalSize = v, v -> v + "%"));
-                add(0, new Sld("Скорость вращения", 20, 300, 10, () -> c.crystalSpeed, v -> c.crystalSpeed = v, v -> v + "%"));
+    // ---------- Render ----------
+    private void buildRender(LumenConfig c) {
+        // колонка 1
+        mod("ESP", 0, () -> c.esp, v -> c.esp = v)
+                .add(new Cyc("Режим", new String[]{"fill", "box"}, () -> c.espMode, v -> c.espMode = v))
+                .add(new Sld("Заливка", 10, 80, 2, () -> c.espFillAlpha, v -> c.espFillAlpha = v, v -> v + "%"))
+                .add(new Sld("Толщина линий", 1, 6, 1, () -> c.espLine, v -> c.espLine = v, v -> String.valueOf(v / 2f)))
+                .add(new Tog("Свечение рёбер", () -> c.espGlow, v -> c.espGlow = v))
+                .add(new Hdr("Цели"))
+                .add(new Tog("Игроки", () -> c.espPlayers, v -> c.espPlayers = v))
+                .add(new Tog("Враждебные", () -> c.espHostile, v -> c.espHostile = v))
+                .add(new Tog("Мирные", () -> c.espPassive, v -> c.espPassive = v))
+                .add(new Tog("Невидимые", () -> c.showInvisible, v -> c.showInvisible = v))
+                .add(new Sld("Дальность", 16, 256, 8, () -> c.range, v -> c.range = v, v -> v + " м"))
+                .add(new Hdr("Цвет: игроки"))
+                .add(new Swatches(ESP_COLORS, hx -> { c.playerColor = hx; }, () -> c.playerArgb))
+                .add(new Hdr("Цвет: враждебные"))
+                .add(new Swatches(ESP_COLORS, hx -> { c.hostileColor = hx; }, () -> c.hostileArgb))
+                .add(new Hdr("Цвет: мирные"))
+                .add(new Swatches(ESP_COLORS, hx -> { c.passiveColor = hx; }, () -> c.passiveArgb));
 
-                add(1, new Hdr("Target HUD"));
-                add(1, new Tog("Включить", () -> c.thud, v -> c.thud = v));
-                add(1, new Cyc("Стиль", new String[]{"glass", "flat"}, () -> c.thudStyle, v -> c.thudStyle = v));
-                add(1, new Tog("Голова игрока", () -> c.thudSkin, v -> c.thudSkin = v));
-                add(1, new Sld("Размер", 50, 200, 5, () -> Math.round(c.thudScale * 100), v -> c.thudScale = v / 100f, v -> v + "%"));
-                add(1, new Tog("Prediction", () -> c.predict, v -> c.predict = v));
+        mod("Tracers", 0, () -> c.tracers, v -> c.tracers = v)
+                .add(new Tog("Из прицела", () -> c.tracersFromCrosshair, v -> c.tracersFromCrosshair = v));
 
-                add(2, new Hdr("Позиция Target HUD"));
-                add(2, new Sld("Смещение X", -250, 250, 5, () -> c.thudX, v -> c.thudX = v, String::valueOf));
-                add(2, new Sld("Смещение Y", -200, 200, 5, () -> c.thudY, v -> c.thudY = v, String::valueOf));
-                add(2, new Sld("Держать цель", 1, 10, 1, () -> Math.round(c.targetHold), v -> c.targetHold = v, v -> v + " с"));
-            }
-            case 3 -> { // ---------- World ----------
-                add(0, new Hdr("Мир"));
-                add(0, new Tog("World visuals", () -> c.world, v -> c.world = v));
-                add(0, new Btns(new String[]{"Newyear", "Sunset", "Aurora"},
-                        new Runnable[]{() -> c.applyPreset("newyear"), () -> c.applyPreset("sunset"), () -> c.applyPreset("aurora")}));
-                add(0, new Btns(new String[]{"Sakura", "Neon"},
-                        new Runnable[]{() -> c.applyPreset("sakura"), () -> c.applyPreset("neon")}));
-                add(0, new Sld("Насыщенность", 0, 200, 5, () -> c.worldSat, v -> c.worldSat = v, v -> v + "%"));
-                add(0, new Sld("Затемнение", 0, 70, 2, () -> c.worldDark, v -> c.worldDark = v, v -> v + "%"));
-                add(0, new Sld("Цветной оверлей", 0, 80, 2, () -> c.tintAlpha, v -> c.tintAlpha = v, String::valueOf));
+        mod("Nametags", 0, () -> c.nametags, v -> c.nametags = v)
+                .add(new Tog("Дистанция в нике", () -> c.showDistance, v -> c.showDistance = v));
 
-                add(1, new Hdr("Атмосфера"));
-                add(1, new Tog("Туман", () -> c.worldFog, v -> c.worldFog = v));
-                add(1, new Sld("Дальность тумана", 30, 100, 5, () -> c.fogEnd, v -> c.fogEnd = v, v -> v + "%"));
-                add(1, new Tog("Своё время суток", () -> c.worldTime, v -> c.worldTime = v));
-                add(1, new Sld("Время", 0, 24000, 500, () -> c.worldTimeTicks, v -> c.worldTimeTicks = v,
+        mod("Fullbright", 0, () -> c.fullbright, v -> c.fullbright = v)
+                .add(new Sld("Яркость", 2, 100, 2, () -> (int) c.fullbrightGamma, v -> c.fullbrightGamma = v, String::valueOf));
+
+        // колонка 2
+        mod("World", 1, () -> c.world, v -> c.world = v)
+                .add(new Btns(new String[]{"Newyear", "Sunset", "Aurora"},
+                        new Runnable[]{() -> c.applyPreset("newyear"), () -> c.applyPreset("sunset"), () -> c.applyPreset("aurora")}))
+                .add(new Btns(new String[]{"Sakura", "Neon"},
+                        new Runnable[]{() -> c.applyPreset("sakura"), () -> c.applyPreset("neon")}))
+                .add(new Sld("Насыщенность", 0, 200, 5, () -> c.worldSat, v -> c.worldSat = v, v -> v + "%"))
+                .add(new Sld("Затемнение", 0, 70, 2, () -> c.worldDark, v -> c.worldDark = v, v -> v + "%"))
+                .add(new Sld("Цветной оверлей", 0, 80, 2, () -> c.tintAlpha, v -> c.tintAlpha = v, String::valueOf))
+                .add(new Tog("Туман", () -> c.worldFog, v -> c.worldFog = v))
+                .add(new Sld("Дальность тумана", 30, 100, 5, () -> c.fogEnd, v -> c.fogEnd = v, v -> v + "%"))
+                .add(new Tog("Своё время суток", () -> c.worldTime, v -> c.worldTime = v))
+                .add(new Sld("Время", 0, 24000, 500, () -> c.worldTimeTicks, v -> c.worldTimeTicks = v,
                         v -> String.format("%02d:00", ((v / 1000) + 6) % 24)));
-                add(1, new Hdr("Частицы"));
-                add(1, new Sld("Снег", 0, 400, 10, () -> c.snowCount, v -> c.snowCount = v, String::valueOf));
-                add(1, new Sld("Звёзды", 0, 150, 5, () -> c.starCount, v -> c.starCount = v, String::valueOf));
 
-                add(2, new Hdr("Небо-плазма"));
-                add(2, new Cyc("Вариант", new String[]{"off", "aurora", "nebula", "solar", "toxic"}, () -> c.plasma, v -> c.plasma = v));
-                add(2, new Sld("Яркость", 0, 100, 5, () -> c.plasmaIntensity, v -> c.plasmaIntensity = v, v -> v + "%"));
-                add(2, new Sld("Скорость", 20, 300, 10, () -> c.plasmaSpeed, v -> c.plasmaSpeed = v, v -> v + "%"));
-                add(2, new Hdr("Дым и частицы"));
-                add(2, new Sld("Дым", 0, 30, 1, () -> c.smokeCount, v -> c.smokeCount = v, String::valueOf));
-                add(2, new Sld("Скорость частиц", 20, 300, 10, () -> c.particleSpeed, v -> c.particleSpeed = v, v -> v + "%"));
-            }
-            case 4 -> { // ---------- View model ----------
-                add(0, new Hdr("View model"));
-                add(0, new Tog("Включить", () -> c.vm, v -> c.vm = v));
-                add(0, new Sld("Позиция X", -100, 100, 1, () -> c.vmX, v -> c.vmX = v, String::valueOf));
-                add(0, new Sld("Позиция Y", -100, 100, 1, () -> c.vmY, v -> c.vmY = v, String::valueOf));
-                add(0, new Sld("Позиция Z", -100, 100, 1, () -> c.vmZ, v -> c.vmZ = v, String::valueOf));
-                add(0, new Sld("Размер", 30, 200, 5, () -> c.vmScale, v -> c.vmScale = v, v -> v + "%"));
+        mod("Particles", 1)
+                .add(new Sld("Снег", 0, 400, 10, () -> c.snowCount, v -> c.snowCount = v, String::valueOf))
+                .add(new Sld("Звёзды", 0, 150, 5, () -> c.starCount, v -> c.starCount = v, String::valueOf))
+                .add(new Sld("Дым", 0, 30, 1, () -> c.smokeCount, v -> c.smokeCount = v, String::valueOf))
+                .add(new Sld("Скорость частиц", 20, 300, 10, () -> c.particleSpeed, v -> c.particleSpeed = v, v -> v + "%"));
 
-                add(1, new Hdr("Поворот"));
-                add(1, new Sld("Вокруг X", -180, 180, 5, () -> c.vmRotX, v -> c.vmRotX = v, v -> v + "°"));
-                add(1, new Sld("Вокруг Y", -180, 180, 5, () -> c.vmRotY, v -> c.vmRotY = v, v -> v + "°"));
-                add(1, new Sld("Вокруг Z", -180, 180, 5, () -> c.vmRotZ, v -> c.vmRotZ = v, v -> v + "°"));
-                add(1, new Tog("Без анимации подъёма", () -> c.vmNoEquip, v -> c.vmNoEquip = v));
+        mod("Sky Plasma", 1)
+                .add(new Cyc("Вариант", new String[]{"off", "aurora", "nebula", "solar", "toxic"}, () -> c.plasma, v -> c.plasma = v))
+                .add(new Sld("Яркость", 0, 100, 5, () -> c.plasmaIntensity, v -> c.plasmaIntensity = v, v -> v + "%"))
+                .add(new Sld("Скорость", 20, 300, 10, () -> c.plasmaSpeed, v -> c.plasmaSpeed = v, v -> v + "%"));
 
-                add(2, new Hdr("Swing animation — Wexside"));
-                add(2, new Tog("Включить анимацию", () -> c.vmAnimation, v -> c.vmAnimation = v));
-                add(2, new Cyc("Стиль", new String[]{"smooth", "mode2", "mode3", "mode4", "mode5", "mode6", "mode7", "vanilla", "none"},
-                        () -> c.vmSwing, v -> c.vmSwing = v));
-                add(2, new Sld("Скорость взмаха", 50, 300, 10, () -> c.vmSwingSpeed, v -> c.vmSwingSpeed = v, v -> v + "%"));
-                add(2, new Tog("Вращение при ударе", () -> c.vmRotate, v -> c.vmRotate = v));
-                add(2, new Sld("Скорость вращения", 1, 5, 1, () -> c.vmRotateSpeed, v -> c.vmRotateSpeed = v, String::valueOf));
-                add(2, new Hdr("Сброс"));
-                add(2, new Btns(new String[]{"Сбросить view model"}, new Runnable[]{() -> {
+        // колонка 3
+        mod("View Model", 2, () -> c.vm, v -> c.vm = v)
+                .add(new Sld("Позиция X", -100, 100, 1, () -> c.vmX, v -> c.vmX = v, String::valueOf))
+                .add(new Sld("Позиция Y", -100, 100, 1, () -> c.vmY, v -> c.vmY = v, String::valueOf))
+                .add(new Sld("Позиция Z", -100, 100, 1, () -> c.vmZ, v -> c.vmZ = v, String::valueOf))
+                .add(new Sld("Размер", 30, 200, 5, () -> c.vmScale, v -> c.vmScale = v, v -> v + "%"))
+                .add(new Hdr("Поворот"))
+                .add(new Sld("Вокруг X", -180, 180, 5, () -> c.vmRotX, v -> c.vmRotX = v, v -> v + "°"))
+                .add(new Sld("Вокруг Y", -180, 180, 5, () -> c.vmRotY, v -> c.vmRotY = v, v -> v + "°"))
+                .add(new Sld("Вокруг Z", -180, 180, 5, () -> c.vmRotZ, v -> c.vmRotZ = v, v -> v + "°"))
+                .add(new Tog("Без анимации подъёма", () -> c.vmNoEquip, v -> c.vmNoEquip = v))
+                .add(new Btns(new String[]{"Сбросить view model"}, new Runnable[]{() -> {
                     c.vmX = 0; c.vmY = 0; c.vmZ = 0; c.vmScale = 100;
                     c.vmRotX = 0; c.vmRotY = 0; c.vmRotZ = 0;
                     c.vmSwing = "smooth"; c.vmSwingSpeed = 100; c.vmAnimation = true; c.vmRotate = false; c.vmRotateSpeed = 1; c.vmNoEquip = false;
                 }}));
-            }
-            case 5 -> { // ---------- Cosmetics ----------
-                add(0, new Hdr("Косметика"));
-                add(0, new Tog("Нимб", () -> c.cosHalo, v -> c.cosHalo = v));
-                add(0, new Tog("Звёзды-аура", () -> c.cosAura, v -> c.cosAura = v));
-                add(0, new Tog("Звёздный шлейф", () -> c.cosTrail, v -> c.cosTrail = v));
-                add(0, new Sld("Размер", 50, 200, 10, () -> c.cosSize, v -> c.cosSize = v, v -> v + "%"));
-                add(0, new Sld("Скорость", 20, 300, 10, () -> c.cosSpeed, v -> c.cosSpeed = v, v -> v + "%"));
 
-                add(1, new Hdr("Цвет"));
-                add(1, new Tog("Цвет темы", () -> c.cosFollowTheme, v -> c.cosFollowTheme = v));
-                add(1, new Swatches(SWATCHES, hx -> { c.cosColor = hx; c.cosFollowTheme = false; }, () -> c.cosRgb));
+        mod("Swing Animation", 2, () -> c.vmAnimation, v -> c.vmAnimation = v)
+                .add(new Cyc("Стиль", new String[]{"smooth", "mode2", "mode3", "mode4", "mode5", "mode6", "mode7", "vanilla", "none"},
+                        () -> c.vmSwing, v -> c.vmSwing = v))
+                .add(new Sld("Скорость взмаха", 50, 300, 10, () -> c.vmSwingSpeed, v -> c.vmSwingSpeed = v, v -> v + "%"))
+                .add(new Tog("Вращение при ударе", () -> c.vmRotate, v -> c.vmRotate = v))
+                .add(new Sld("Скорость вращения", 1, 5, 1, () -> c.vmRotateSpeed, v -> c.vmRotateSpeed = v, String::valueOf));
 
-                add(2, new Hdr("Заметки"));
-                add(2, new Note("Нимб и аура видны от 3-го"));
-                add(2, new Note("лица (F5). Шлейф — всегда,"));
-                add(2, new Note("пока ты двигаешься."));
-            }
-            default -> { // ---------- Theme ----------
-                add(0, new Hdr("Цвет темы"));
-                add(0, new Swatches(SWATCHES, c::setThemeHex, () -> c.themeRgb));
-                Sld hue = new Sld("Оттенок", 0, 359, 1, () -> c.themeH, v -> c.themeH = v, v -> v + "°");
-                hue.rainbow = true;
-                add(0, hue);
-                add(0, new Sld("Насыщенность", 15, 100, 1, () -> c.themeS, v -> c.themeS = v, v -> v + "%"));
-                add(0, new Sld("Яркость", 35, 100, 1, () -> c.themeV, v -> c.themeV = v, v -> v + "%"));
+        mod("Module List", 2, () -> c.hud, v -> c.hud = v)
+                .add(new Note("Список включённых модулей"))
+                .add(new Note("на экране"));
+    }
 
-                add(1, new Hdr("Стекло"));
-                add(1, new Sld("Прозрачность панели", 20, 95, 5, () -> c.glassOpacity, v -> c.glassOpacity = v, v -> v + "%"));
-                add(1, new Tog("Жидкие блики", () -> c.guiAnim, v -> c.guiAnim = v));
-                add(1, new Tog("Тема для Target/HUD", () -> c.followTheme, v -> c.followTheme = v));
+    // ---------- Player ----------
+    private void buildPlayer(LumenConfig c) {
+        mod("Click Actions", 0)
+                .add(new Bind("Pearl", () -> c.bindPearl, v -> c.bindPearl = v))
+                .add(new Bind("Spec в чат", () -> c.bindSpec, v -> c.bindSpec = v))
+                .add(new Bind("/hub в чат", () -> c.bindHub, v -> c.bindHub = v))
+                .add(new Note("Клик, затем нажми клавишу"))
+                .add(new Note("Esc при выборе — стереть"))
+                .add(new Note("ЛКМ и ПКМ не биндятся"));
 
-                add(2, new Hdr("Превью"));
-                add(2, new Preview());
-            }
-        }
+        mod("Halo", 1, () -> c.cosHalo, v -> c.cosHalo = v)
+                .add(new Note("Виден от 3-го лица (F5)"));
+        mod("Star Aura", 1, () -> c.cosAura, v -> c.cosAura = v)
+                .add(new Note("Виден от 3-го лица (F5)"));
+        mod("Star Trail", 1, () -> c.cosTrail, v -> c.cosTrail = v)
+                .add(new Note("Всегда, пока ты двигаешься"));
+
+        mod("Cosmetics Style", 2)
+                .add(new Sld("Размер", 50, 200, 10, () -> c.cosSize, v -> c.cosSize = v, v -> v + "%"))
+                .add(new Sld("Скорость", 20, 300, 10, () -> c.cosSpeed, v -> c.cosSpeed = v, v -> v + "%"))
+                .add(new Tog("Цвет темы", () -> c.cosFollowTheme, v -> c.cosFollowTheme = v))
+                .add(new Swatches(SWATCHES, hx -> { c.cosColor = hx; c.cosFollowTheme = false; }, () -> c.cosRgb));
+    }
+
+    // ---------- Misc ----------
+    private void buildMisc(LumenConfig c) {
+        Sld hue = new Sld("Оттенок", 0, 359, 1, () -> c.themeH, v -> c.themeH = v, v -> v + "°");
+        hue.rainbow = true;
+        mod("Theme", 0)
+                .add(new Swatches(SWATCHES, c::setThemeHex, () -> c.themeRgb))
+                .add(hue)
+                .add(new Sld("Насыщенность", 15, 100, 1, () -> c.themeS, v -> c.themeS = v, v -> v + "%"))
+                .add(new Sld("Яркость", 35, 100, 1, () -> c.themeV, v -> c.themeV = v, v -> v + "%"));
+
+        mod("Glass", 1)
+                .add(new Sld("Прозрачность панели", 20, 95, 5, () -> c.glassOpacity, v -> c.glassOpacity = v, v -> v + "%"))
+                .add(new Tog("Жидкие блики", () -> c.guiAnim, v -> c.guiAnim = v))
+                .add(new Tog("Тема для Target/HUD", () -> c.followTheme, v -> c.followTheme = v));
+
+        mod("Preview", 2).add(new Preview());
+
+        mod("Info", 2)
+                .add(new Note("Меню: RShift или чат .gui"))
+                .add(new Note("Помощь: .lumen help"))
+                .add(new Note("Клавиши: J ESP, K Tracers,"))
+                .add(new Note("U Nametags, L Fullbright"))
+                .add(new Note("ПКМ по модулю — настройки"))
+                .add(new Note("Колесо мыши — прокрутка"));
     }
 
     // ================= рендер =================
@@ -266,6 +336,11 @@ public class LumenScreen extends Screen {
         ps = Gfx.sf() * us;
         double lx = (mx - px) / us, ly = (my - py) / us;
 
+        // плавная прокрутка
+        scrollTarget = MathHelper.clamp(scrollTarget, 0f, maxScroll());
+        scrollCur += (scrollTarget - scrollCur) * Math.min(1f, dt * 16f);
+        if (Math.abs(scrollTarget - scrollCur) < 0.05f) scrollCur = scrollTarget;
+
         MatrixStack m = ctx.getMatrices();
         m.push();
         m.translate(px, py, 0f);
@@ -280,25 +355,59 @@ public class LumenScreen extends Screen {
         Gfx.rrect(ctx, PW - 34, 12, 20, 16, 8, closeHover ? 0x55FF6B8A : 0x26FFFFFF, closeHover ? 0x33FF6B8A : 0x14FFFFFF, ps);
         ctx.drawCenteredTextWithShadow(textRenderer, "×", PW - 24, 16, 0xFFFFFFFF);
 
-        // вкладки
+        // разделы
         for (int i = 0; i < TABS.length; i++) {
-            float tx = 20 + i * 78, ty = 34;
-            boolean active = i == tab, hover = in(lx, ly, tx, ty, 74, 20);
+            float tx = 20 + i * (TAB_W + TAB_GAP), ty = 34;
+            boolean active = i == tab, hover = in(lx, ly, tx, ty, TAB_W, 20);
             if (active) {
-                Gfx.rrect(ctx, tx, ty, 74, 20, 10, Gfx.withA(cfg.themeLight, 0xC8), Gfx.withA(cfg.themeRgb, 0xC8), ps);
-                Gfx.ring(ctx, tx, ty, 74, 20, 10, Gfx.ringPx(ps), 0x88FFFFFF, ps);
+                Gfx.rrect(ctx, tx, ty, TAB_W, 20, 10, Gfx.withA(cfg.themeLight, 0xC8), Gfx.withA(cfg.themeRgb, 0xC8), ps);
+                Gfx.ring(ctx, tx, ty, TAB_W, 20, 10, Gfx.ringPx(ps), 0x88FFFFFF, ps);
             } else {
-                Gfx.rrect(ctx, tx, ty, 74, 20, 10, hover ? 0x30FFFFFF : 0x1AFFFFFF, hover ? 0x20FFFFFF : 0x0EFFFFFF, ps);
+                Gfx.rrect(ctx, tx, ty, TAB_W, 20, 10, hover ? 0x30FFFFFF : 0x1AFFFFFF, hover ? 0x20FFFFFF : 0x0EFFFFFF, ps);
             }
-            ctx.drawCenteredTextWithShadow(textRenderer, TABS[i], (int) (tx + 37), (int) ty + 6, active ? 0xFFFFFFFF : 0xFFD8CCF2);
+            ctx.drawCenteredTextWithShadow(textRenderer, TABS[i], (int) (tx + TAB_W / 2f), (int) ty + 6, active ? 0xFFFFFFFF : 0xFFD8CCF2);
         }
 
-        for (W w : ws) w.draw(this, ctx, lx, ly);
+        // полоса прокрутки
+        float ms = maxScroll();
+        if (ms > 0) {
+            float trackY = VIEW_T + 4, trackH = VIEW_B - VIEW_T - 8;
+            float viewH = VIEW_B - CY0;
+            float thumbH = Math.max(18f, trackH * viewH / (viewH + ms));
+            float thumbY = trackY + (trackH - thumbH) * (scrollCur / ms);
+            Gfx.rrect(ctx, PW - 11, trackY, 3, trackH, 1.5f, 0x22FFFFFF, 0x12FFFFFF, ps);
+            Gfx.rrect(ctx, PW - 11, thumbY, 3, thumbH, 1.5f, Gfx.withA(cfg.themeLight, 0xE0), Gfx.withA(cfg.themeRgb, 0xE0), ps);
+        }
 
-        String foot = "RShift / ×  — закрыть   •   чат: .lumen help";
+        String foot = "RShift / ×  — закрыть   •   ПКМ по модулю — настройки   •   колесо — прокрутка";
         ctx.drawText(textRenderer, foot, PW / 2 - textRenderer.getWidth(foot) / 2, PH - 14, 0x88FFFFFF, false);
 
         m.pop();
+
+        // модули: обрезаем по видимой области и сдвигаем на величину прокрутки.
+        // Scissor включаем при единичной матрице, чтобы координаты были экранными.
+        int x1 = (int) Math.floor(px + 12 * us), y1 = (int) Math.floor(py + VIEW_T * us);
+        int x2 = (int) Math.ceil(px + (PW - 12) * us), y2 = (int) Math.ceil(py + VIEW_B * us);
+        ctx.enableScissor(x1, y1, x2, y2);
+        try {
+            int sc = Math.round(scrollCur);
+            m.push();
+            m.translate(px, py, 0f);
+            m.scale(us, us, 1f);
+            m.translate(0f, -sc, 0f);
+            double hy = (ly >= VIEW_T && ly < VIEW_B && lx >= 0 && lx < PW) ? ly + sc : -10000;
+            for (float[] k : cards) {
+                if (k[1] + k[3] < sc + VIEW_T || k[1] > sc + VIEW_B) continue;
+                Gfx.rrect(ctx, k[0], k[1], k[2], k[3], 8, 0x1AFFFFFF, 0x0AFFFFFF, ps);
+            }
+            for (W w : ws) {
+                if (w.y + w.h < sc + VIEW_T || w.y > sc + VIEW_B) continue;
+                w.draw(this, ctx, lx, hy);
+            }
+            m.pop();
+        } finally {
+            ctx.disableScissor();
+        }
     }
 
     private void drawPanel(DrawContext c, LumenConfig cfg, long now) {
@@ -347,23 +456,36 @@ public class LumenScreen extends Screen {
                 return true;
             }
             for (int i = 0; i < TABS.length; i++) {
-                if (in(lx, ly, 20 + i * 78, 34, 74, 20)) {
-                    tab = i;
-                    build();
+                if (in(lx, ly, 20 + i * (TAB_W + TAB_GAP), 34, TAB_W, 20)) {
+                    if (tab != i) {
+                        tab = i;
+                        scrollCur = scrollTarget = 0f;
+                        build();
+                    }
                     return true;
                 }
             }
-            for (W w : ws) {
-                if (w.hit(lx, ly) && w.down(this, lx, ly, button)) {
-                    if (w.draggable) drag = w;
-                    cfg.recolor();
-                    cfg.save();
-                    return true;
+            if (ly >= VIEW_T && ly < VIEW_B) {
+                double cy = ly + Math.round(scrollCur);
+                for (W w : ws) {
+                    if (w.hit(lx, cy) && w.down(this, lx, cy, button)) {
+                        if (w.draggable) drag = w;
+                        cfg.recolor();
+                        cfg.save();
+                        return true;
+                    }
                 }
             }
             return true;
         }
         return super.mouseClicked(mx, my, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double horizontalAmount, double verticalAmount) {
+        if (listening != null) return true;
+        scrollTarget = MathHelper.clamp(scrollTarget - (float) verticalAmount * 28f, 0f, maxScroll());
+        return true;
     }
 
     @Override
@@ -440,6 +562,59 @@ public class LumenScreen extends Screen {
         }
     }
 
+    /** Заголовок модуля: ЛКМ — вкл/выкл, ПКМ — развернуть/свернуть настройки. */
+    private static final class ModHdr extends W {
+        final Mod m;
+        final boolean open;
+        float anim;
+
+        ModHdr(Mod m, boolean open) {
+            this.m = m;
+            this.open = open;
+            this.h = 22;
+            this.anim = m.on != null && m.on.getAsBoolean() ? 1f : 0f;
+        }
+
+        @Override
+        void draw(LumenScreen s, DrawContext c, double mx, double my) {
+            LumenConfig cfg = LumenConfig.get();
+            boolean on = m.on == null || m.on.getAsBoolean();
+            if (hit(mx, my)) Gfx.rrect(c, x, y, w, h, 8, 0x28FFFFFF, 0x14FFFFFF, s.ps);
+            float tx = x + 8;
+            if (!m.kids.isEmpty()) {
+                c.drawText(s.textRenderer, open ? "v" : ">", (int) x + 8, (int) y + 7, 0xBBFFFFFF, false);
+                tx = x + 19;
+            }
+            c.drawText(s.textRenderer, m.name, (int) tx, (int) y + 7, on ? 0xFFFFFFFF : 0xFFC9BEE0, true);
+            if (m.on != null) {
+                anim += ((on ? 1f : 0f) - anim) * Math.min(1f, s.dt * 14f);
+                float sx = x + w - 32, sy = y + 5;
+                Gfx.rrect(c, sx, sy, 26, 12, 6,
+                        Gfx.lerp(0x40FFFFFF, Gfx.withA(cfg.themeLight, 0xE6), anim),
+                        Gfx.lerp(0x26FFFFFF, Gfx.withA(cfg.themeRgb, 0xE6), anim), s.ps);
+                Gfx.ring(c, sx, sy, 26, 12, 6, Gfx.ringPx(s.ps), 0x55FFFFFF, s.ps);
+                float kx = sx + 1 + 13 * anim;
+                Gfx.rrect(c, kx, sy + 1.5f, 10, 10, 5, 0xFFFFFFFF, 0xFFE4DAFF, s.ps);
+            }
+        }
+
+        @Override
+        boolean down(LumenScreen s, double mx, double my, int b) {
+            boolean hasKids = !m.kids.isEmpty();
+            if (b == 1 || (b == 0 && m.on == null)) {
+                if (!hasKids) return true;
+                if (!OPEN.remove(m.name)) OPEN.add(m.name);
+                s.layout();
+                return true;
+            }
+            if (b == 0) {
+                m.setOn.accept(!m.on.getAsBoolean());
+                return true;
+            }
+            return false;
+        }
+    }
+
     private static final class Hdr extends W {
         final String text;
 
@@ -502,6 +677,7 @@ public class LumenScreen extends Screen {
 
         @Override
         boolean down(LumenScreen s, double mx, double my, int b) {
+            if (b != 0) return false;
             set.accept(!get.getAsBoolean());
             return true;
         }
