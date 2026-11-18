@@ -432,13 +432,13 @@ public final class LumenCommands {
 
             case "plasma" -> {
                 if (a.length < 2) {
-                    say("plasma: aurora|nebula|solar|toxic|off [яркость 0-100]");
+                    say("plasma: aurora|nebula|solar|toxic|moonlit|off [яркость 0-100]");
                     break;
                 }
 
                 String pv = a[1].toLowerCase();
 
-                if (Set.of("off", "aurora", "nebula", "solar", "toxic").contains(pv)) {
+                if (Set.of("off", "aurora", "nebula", "solar", "toxic", "moonlit").contains(pv)) {
                     c.plasma = pv;
 
                     if (a.length > 2) {
@@ -448,7 +448,7 @@ public final class LumenCommands {
                     c.recolor();
                     say("plasma = " + pv + " " + c.plasmaIntensity + "%");
                 } else {
-                    say("plasma: aurora|nebula|solar|toxic|off [яркость 0-100]");
+                    say("plasma: aurora|nebula|solar|toxic|moonlit|off [яркость 0-100]");
                 }
             }
 
@@ -512,7 +512,7 @@ public final class LumenCommands {
         say("theme HEX | theme hsv H S V | theme reset");
         say("world on|off|preset newyear|sunset|aurora|sakura|off | sat 0-200");
         say("world fog <старт%> <конец%> | fogcolor HEX | time day|sunset|night|N | snow N | stars N | dark N | tint HEX [A]");
-        say("world smoke smoke|large|cozy|off [N] | plasma aurora|nebula|solar|toxic|off [яркость] | plasmaspeed N");
+        say("world smoke smoke|large|cozy|off [N] | plasma aurora|nebula|solar|toxic|moonlit|off [яркость] | plasmaspeed N");
     }
 
     // ---------- утилиты ----------

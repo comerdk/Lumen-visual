@@ -92,6 +92,7 @@ public final class WorldEffects {
     }
 
     private static int plasmaRgb(String variant, float t) {
+        if ("moonlit".equals(variant)) return 0x0A1535;
         int[] p = switch (variant) {
             case "aurora" -> AURORA;
             case "solar" -> SOLAR;

@@ -49,6 +49,14 @@ public class LumenVisualsClient implements ClientModInitializer {
                 report("world", t);
             }
         });
+        // Moonlit sky — после мира, depth-буфер уже заполнен
+        WorldRenderEvents.LAST.register(ctx -> {
+            try {
+                MoonlitSky.render(MinecraftClient.getInstance(), LumenConfig.get());
+            } catch (Throwable t) {
+                report("moonlit", t);
+            }
+        });
         HudRenderCallback.EVENT.register(VisualsRenderer::render);
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
 

@@ -216,7 +216,7 @@ public class LumenScreen extends Screen {
                 .add(new Sld("Скорость частиц", 20, 300, 10, () -> c.particleSpeed, v -> c.particleSpeed = v, v -> v + "%"));
 
         mod("Sky Plasma", 1)
-                .add(new Cyc("Вариант", new String[]{"off", "aurora", "nebula", "solar", "toxic"}, () -> c.plasma, v -> c.plasma = v))
+                .add(new Cyc("Вариант", new String[]{"off", "aurora", "nebula", "solar", "toxic", "moonlit"}, () -> c.plasma, v -> c.plasma = v))
                 .add(new Sld("Яркость", 0, 100, 5, () -> c.plasmaIntensity, v -> c.plasmaIntensity = v, v -> v + "%"))
                 .add(new Sld("Скорость", 20, 300, 10, () -> c.plasmaSpeed, v -> c.plasmaSpeed = v, v -> v + "%"));
 
@@ -244,17 +244,9 @@ public class LumenScreen extends Screen {
                 .add(new Tog("Вращение при ударе", () -> c.vmRotate, v -> c.vmRotate = v))
                 .add(new Sld("Скорость вращения", 1, 5, 1, () -> c.vmRotateSpeed, v -> c.vmRotateSpeed = v, String::valueOf));
 
-        mod("Custom HUD", 2, () -> c.customHud, v -> c.customHud = v)
-                .add(new Note("Панели координат, FPS, сервера"))
-                .add(new Note("и скорости вместо старого watermark"));
-
-        mod("Player Glow", 2, () -> c.playerGlow, v -> c.playerGlow = v)
-                .add(new Sld("Яркость свечения", 0, 100, 5, () -> c.playerGlowStrength, v -> c.playerGlowStrength = v, v -> v + "%"))
-                .add(new Swatches(SWATCHES, hx -> c.playerGlowColor = hx, () -> c.playerGlowRgb));
-
-        mod("Hand Fire", 2, () -> c.handFire, v -> c.handFire = v)
-                .add(new Sld("Яркость огня", 0, 100, 5, () -> c.handFireStrength, v -> c.handFireStrength = v, v -> v + "%"))
-                .add(new Swatches(SWATCHES, hx -> c.handFireColor = hx, () -> c.handFireRgb));
+        mod("Module List", 2, () -> c.hud, v -> c.hud = v)
+                .add(new Note("Список включённых модулей"))
+                .add(new Note("на экране"));
     }
 
     // ---------- Player ----------
