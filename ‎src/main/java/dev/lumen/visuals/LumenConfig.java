@@ -26,6 +26,14 @@ public final class LumenConfig {
     public boolean showInvisible = true;
     public boolean showDistance = true;
     public boolean hud = true;
+    // Custom HUD and extra visual effects
+    public boolean customHud = true;
+    public boolean playerGlow = false;
+    public String playerGlowColor = "B388FF";
+    public int playerGlowStrength = 75; // 0..100
+    public boolean handFire = false;
+    public String handFireColor = "FF8A24";
+    public int handFireStrength = 75; // 0..100
     public boolean tracersFromCrosshair = false;
 
     // параметры
@@ -127,7 +135,7 @@ public final class LumenConfig {
     public boolean cosFollowTheme = true;
     public String cosColor = "FFD6F5";
 
-    public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb;
+    public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb, playerGlowRgb, handFireRgb;
     public transient int themeRgb, themeLight, themeDark, cosRgb;
 
     public static int parseHex(String s) {
@@ -232,6 +240,10 @@ public final class LumenConfig {
         thudArgb = parse(thudColor, 0xB388FF);
         fogRgb = parse(fogColor, 0x3B1580) & 0xFFFFFF;
         tintRgb = parse(tintColor, 0x7A3FE0) & 0xFFFFFF;
+        playerGlowRgb = parse(playerGlowColor, 0xB388FF) & 0xFFFFFF;
+        handFireRgb = parse(handFireColor, 0xFF8A24) & 0xFFFFFF;
+        playerGlowStrength = Math.max(0, Math.min(100, playerGlowStrength));
+        handFireStrength = Math.max(0, Math.min(100, handFireStrength));
         thudScale = Math.max(0.5f, Math.min(3f, thudScale));
         fogStart = Math.max(0, Math.min(98, fogStart));
         fogEnd = Math.max(fogStart + 1, Math.min(100, fogEnd));

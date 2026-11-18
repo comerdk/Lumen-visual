@@ -86,7 +86,8 @@ public final class VisualsRenderer {
         if (mc.world == null || mc.player == null || mc.options.hudHidden) return;
 
         WorldEffects.overlay(c, mc, cfg);
-        if (cfg.hud) drawHud(c, mc, cfg);
+        if (cfg.customHud) drawHud(c, mc, cfg);
+        if (cfg.handFire) drawHandFire(c, mc, cfg);
         TargetHud.render(c, mc, cfg);
         if (ready) {
             Cosmetics.render(c, mc, cfg, mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
@@ -94,6 +95,9 @@ public final class VisualsRenderer {
         if (!ready || !(cfg.esp || cfg.tracers || cfg.nametags || cfg.tesp || cfg.predict)) return;
         boolean anyEsp = cfg.esp || cfg.tracers || cfg.nametags;
         boolean fillMode = cfg.esp && "fill".equals(cfg.espMode);
+        if (cfg.playerGlow && !mc.options.getPerspective().isFirstPerson() && cfg.playerGlowStrength > 0) {
+            drawLocalPlayerGlow(c, mc, cfg, sw, sh);
+        }
         EntityEsp.begin();
 
         TextRenderer font = mc.textRenderer;
@@ -172,34 +176,84 @@ public final class VisualsRenderer {
         return SCR[1];
     }
 
-    /** Watermark слева сверху + список включённых модулей справа сверху (liquid glass). */
+    /** Компактный glass HUD по референсу: координаты, FPS, сервер, время и скорость. */
     private static void drawHud(DrawContext c, MinecraftClient mc, LumenConfig cfg) {
         TextRenderer f = mc.textRenderer;
         int sw = mc.getWindow().getScaledWidth();
         double ps = Gfx.sf();
-        int ring = Gfx.ringPx(ps);
         int top = Gfx.withA(cfg.themeLight, 0xA0);
-        int bot = Gfx.withA(cfg.themeDark, 0xCC);
+        int bot = Gfx.withA(cfg.themeDark, 0xD0);
+        int accent = 0xFFFFFFFF;
+        int x = 8, y = 8, h = f.fontHeight + 10;
+        String coords = String.format("X %.1f   Y %.1f   Z %.1f", mc.player.getX(), mc.player.getY(), mc.player.getZ());
+        String fps = mc.getCurrentFps() + " FPS";
+        String server = mc.getCurrentServerEntry() == null ? "Singleplayer" : mc.getCurrentServerEntry().address;
+        if (server.length() > 22) server = server.substring(0, 21) + "…";
+        long dayTime = mc.world.getTimeOfDay() % 24000L;
+        String clock = String.format("%02d:%02d", (dayTime / 1000 + 6) % 24, (dayTime % 1000) * 60 / 1000);
+        String line = coords + "   |   " + fps + "   |   " + server + "   |   " + clock;
+        float w = f.getWidth(line) + 20;
+        Gfx.rrect(c, x, y, w, h, h / 2f, top, bot, ps);
+        Gfx.ring(c, x, y, w, h, h / 2f, Gfx.ringPx(ps), 0x66FFFFFF, ps);
+        c.drawText(f, line, x + 10, y + 5, accent, true);
 
-        float w = f.getWidth("Lumen") + 16, h = f.fontHeight + 8;
-        Gfx.rrect(c, 4, 4, w, h, h / 2f, top, bot, ps);
-        Gfx.ring(c, 4, 4, w, h, h / 2f, ring, 0x66FFFFFF, ps);
-        c.drawText(f, "Lumen", 12, 8, 0xFFFFFFFF, true);
+        double vx = mc.player.getVelocity().x, vz = mc.player.getVelocity().z;
+        double speed = Math.sqrt(vx * vx + vz * vz) * 20.0;
+        String speedText = String.format("Speed  %.2f m/s", speed);
+        int swidth = f.getWidth(speedText) + 18;
+        int sx = sw - swidth - 8, sy = y + h + 5;
+        Gfx.rrect(c, sx, sy, swidth, h, h / 2f, top, bot, ps);
+        Gfx.ring(c, sx, sy, swidth, h, h / 2f, Gfx.ringPx(ps), 0x55FFFFFF, ps);
+        c.drawText(f, speedText, sx + 9, sy + 5, 0xFFFFFFFF, true);
 
-        String[] names = {"ESP", "Tracers", "Nametags", "Fullbright", "Target ESP", "Target HUD", "World"};
-        boolean[] on = {cfg.esp, cfg.tracers, cfg.nametags, cfg.fullbright, cfg.tesp, cfg.thud, cfg.world};
-        float y = 4;
-        float rh = f.fontHeight + 6;
-        for (int i = 0; i < names.length; i++) {
-            if (!on[i]) continue;
-            float rw = f.getWidth(names[i]) + 20;
-            float x = sw - rw - 4;
-            Gfx.rrect(c, x, y, rw, rh, rh / 2f, top, bot, ps);
-            Gfx.ring(c, x, y, rw, rh, rh / 2f, ring, 0x55FFFFFF, ps);
-            Gfx.rrect(c, x + 6, y + rh / 2f - 2f, 4, 4, 2, 0xFFFFFFFF, 0xFFE4DAFF, ps);
-            c.drawText(f, names[i], (int) x + 13, (int) y + 4, 0xFFFFFFFF, true);
-            y += rh + 2;
+        // Компактная строка статуса вместо прежнего списка модулей.
+        String status = "LUMEN  •  " + (mc.player.isSprinting() ? "SPRINT" : "READY");
+        int ww = f.getWidth(status) + 18;
+        Gfx.rrect(c, 8, y + h + 5, ww, h, h / 2f, top, bot, ps);
+        Gfx.ring(c, 8, y + h + 5, ww, h, h / 2f, Gfx.ringPx(ps), 0x55FFFFFF, ps);
+        c.drawText(f, status, 17, y + h + 10, 0xFFFFFFFF, true);
+    }
+
+    /** Стилизованный цветной огонь вокруг позиции предмета в первой руке (HUD-слой). */
+    private static void drawHandFire(DrawContext c, MinecraftClient mc, LumenConfig cfg) {
+        if (mc.options.getPerspective() != net.minecraft.client.option.Perspective.FIRST_PERSON || cfg.handFireStrength <= 0) return;
+        int sw = mc.getWindow().getScaledWidth(), sh = mc.getWindow().getScaledHeight();
+        int rgb = cfg.handFireRgb & 0xFFFFFF;
+        int a = MathHelper.clamp(cfg.handFireStrength * 2, 0, 200);
+        boolean left = mc.options.getMainArm().getValue() == net.minecraft.util.Arm.LEFT;
+        float cx = sw * (left ? 0.36f : 0.64f);
+        float base = sh * 0.88f;
+        long time = System.currentTimeMillis();
+        for (int i = 0; i < 7; i++) {
+            float phase = (float) ((time / 150.0 + i * 1.73) % 6.28);
+            float wobble = (float) Math.sin(phase) * 4f;
+            float height = 10f + 9f * (0.5f + 0.5f * (float) Math.sin(phase * 1.4));
+            float px = cx + (i - 3) * 5.5f + wobble;
+            int alpha = (a * (150 + (i % 3) * 25) / 255) << 24;
+            int col = alpha | rgb;
+            c.fillGradient((int) px, (int) (base - height), (int) (px + 4), (int) base, col, 0x00FFFFFF);
+            c.fill((int) px + 1, (int) (base - height * 0.55f), (int) px + 3, (int) base, col);
         }
+    }
+
+    private static void drawLocalPlayerGlow(DrawContext c, MinecraftClient mc, LumenConfig cfg, int sw, int sh) {
+        PlayerEntity p = mc.player;
+        double px = MathHelper.lerp(tickDelta, p.lastRenderX, p.getX());
+        double py = MathHelper.lerp(tickDelta, p.lastRenderY, p.getY());
+        double pz = MathHelper.lerp(tickDelta, p.lastRenderZ, p.getZ());
+        if (!projectBox(p.getBoundingBox(), px - p.getX(), py - p.getY(), pz - p.getZ(), sw, sh)) return;
+        int rgb = cfg.playerGlowRgb & 0xFFFFFF;
+        int strength = cfg.playerGlowStrength;
+        float x1 = BOX[0], y1 = BOX[1], x2 = BOX[2], y2 = BOX[3];
+        for (int i = 4; i >= 1; i--) {
+            int alpha = Math.min(100, strength * (6 - i) / 7);
+            int color = (alpha << 24) | rgb;
+            float pad = i * 2.2f;
+            c.fill((int)(x1 - pad), (int)(y1 - pad), (int)(x2 + pad), (int)(y2 + pad), color);
+        }
+        int edge = (Math.min(220, strength * 2) << 24) | rgb;
+        c.fill((int)x1 - 1, (int)y1, (int)x1 + 1, (int)y2, edge);
+        c.fill((int)x2 - 1, (int)y1, (int)x2 + 1, (int)y2, edge);
     }
 
     // ---------- Target ESP (кольцо / 3D-бокс через экранную проекцию) ----------
