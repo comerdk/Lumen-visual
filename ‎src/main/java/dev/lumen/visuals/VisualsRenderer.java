@@ -89,20 +89,22 @@ public final class VisualsRenderer {
         if (cfg.customHud) drawHud(c, mc, cfg);
         if (cfg.handFire) drawHandFire(c, mc, cfg);
         TargetHud.render(c, mc, cfg);
+        int sw = mc.getWindow().getScaledWidth();
+        int sh = mc.getWindow().getScaledHeight();
         if (ready) {
-            Cosmetics.render(c, mc, cfg, mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
+            Cosmetics.render(c, mc, cfg, sw, sh);
+        }
+        // Player Glow независим от ESP-модулей и использует размеры экрана,
+        // объявленные до вызова рендера.
+        if (cfg.playerGlow && !mc.options.getPerspective().isFirstPerson() && cfg.playerGlowStrength > 0) {
+            drawLocalPlayerGlow(c, mc, cfg, sw, sh);
         }
         if (!ready || !(cfg.esp || cfg.tracers || cfg.nametags || cfg.tesp || cfg.predict)) return;
         boolean anyEsp = cfg.esp || cfg.tracers || cfg.nametags;
         boolean fillMode = cfg.esp && "fill".equals(cfg.espMode);
-        if (cfg.playerGlow && !mc.options.getPerspective().isFirstPerson() && cfg.playerGlowStrength > 0) {
-            drawLocalPlayerGlow(c, mc, cfg, sw, sh);
-        }
         EntityEsp.begin();
 
         TextRenderer font = mc.textRenderer;
-        int sw = mc.getWindow().getScaledWidth();
-        int sh = mc.getWindow().getScaledHeight();
         double rangeSq = (double) cfg.range * cfg.range;
         float tracerX = sw / 2f;
         float tracerY = cfg.tracersFromCrosshair ? sh / 2f : sh;
