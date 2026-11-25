@@ -19,6 +19,7 @@ uniform vec3  uCamUp;
 uniform vec3  uCamForward;
 uniform sampler2D uDepth;
 uniform float uHasDepth;
+uniform vec3 uTint;
 
 out vec4 fragColor;
 
@@ -205,6 +206,7 @@ void main() {
     int quality = clamp(int(round(uQuality)), 0, 2);
 
     vec3 color = moonlit(dir, time, quality);
+    color = mix(color, color * (uTint * 1.5), 0.72);
     color *= clamp(uBrightness, 0.15, 6.0);
 
     if (any(isnan(color)) || any(isinf(color))) color = vec3(0.01, 0.015, 0.04);
