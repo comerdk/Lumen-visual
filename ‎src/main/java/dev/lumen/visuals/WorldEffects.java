@@ -66,6 +66,8 @@ public final class WorldEffects {
     }
 
     public static boolean plasmaActive(LumenConfig c) {
+        // moonlit рисуется своим GL-шейдером, ванильный tint не нужен
+        if ("moonlit".equals(c.plasma)) return false;
         return !"off".equals(c.plasma) && c.plasmaIntensity > 0;
     }
 
