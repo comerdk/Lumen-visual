@@ -144,13 +144,13 @@ public final class FxParticles {
         float focal = VisualsRenderer.focalPx(sw);
         Matrix4f m = c.getMatrices().peek().getPositionMatrix();
 
-        pass(c, m, TEX_GLOW, false, SMOKE, focal, sw, sh);
-        pass(c, m, TEX_SNOW, false, SNOW, focal, sw, sh);
-        pass(c, m, TEX_STAR, true, STAR, focal, sw, sh);
-        pass(c, m, TEX_STAR, true, TRAIL, focal, sw, sh);
+        pass(c, m, TEX_GLOW, false, SMOKE, focal, sw, sh, cfg);
+        pass(c, m, TEX_SNOW, false, SNOW, focal, sw, sh, cfg);
+        pass(c, m, TEX_STAR, true, STAR, focal, sw, sh, cfg);
+        pass(c, m, TEX_STAR, true, TRAIL, focal, sw, sh, cfg);
     }
 
-    private static void pass(DrawContext c, Matrix4f m, Identifier tex, boolean additive, byte type, float focal, int sw, int sh) {
+    private static void pass(DrawContext c, Matrix4f m, Identifier tex, boolean additive, byte type, float focal, int sw, int sh, LumenConfig cfg) {
         boolean any = false;
         for (int i = 0; i < n; i++) if (TYPE[i] == type) { any = true; break; }
         if (!any) return;
@@ -189,7 +189,8 @@ public final class FxParticles {
                 }
             }
             if (a <= 0.01f) continue;
-            int argb = (Math.min(255, (int) (a * 255)) << 24) | (COL[i] & 0xFFFFFF);
+            int rgb = type == TRAIL ? COL[i] : cfg.particleRgb;
+            int argb = (Math.min(255, (int) (a * 255)) << 24) | (rgb & 0xFFFFFF);
             Draw2D.sprite(m, sx, sy, r, ROT[i], argb);
         }
         Draw2D.endTex();

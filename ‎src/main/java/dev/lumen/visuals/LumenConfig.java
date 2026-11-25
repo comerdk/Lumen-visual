@@ -61,6 +61,8 @@ public final class LumenConfig {
     public boolean tesp = true;
     public String tespStyle = "crystal"; // ring | box | both | crystal
     public String tespColor = "B388FF";
+    public String particleColor = "FFFFFF"; // цвет снега, звёзд и дыма
+    public String plasmaColor = "B388FF";   // основной оттенок Sky Shader
     public int crystalCount = 6;          // 3..12 кристаллов вокруг цели
     public int crystalSize = 100;         // 40..200 % размера
     public int crystalSpeed = 100;        // 20..300 % скорости вращения
@@ -148,6 +150,7 @@ public final class LumenConfig {
     public String cosColor = "FFD6F5";
 
     public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb;
+    public transient int particleRgb, plasmaRgb;
     public transient int themeRgb, themeLight, themeDark, cosRgb, hudRgb;
 
     public static int parseHex(String s) {
@@ -253,6 +256,8 @@ public final class LumenConfig {
         passiveArgb = parse(passiveColor, 0x55FF99);
         if (range < 8) range = 8;
         tespArgb = parse(tespColor, 0xB388FF);
+        particleRgb = parse(particleColor, 0xFFFFFF) & 0xFFFFFF;
+        plasmaRgb = parse(plasmaColor, 0xB388FF) & 0xFFFFFF;
         thudArgb = parse(thudColor, 0xB388FF);
         fogRgb = parse(fogColor, 0x3B1580) & 0xFFFFFF;
         tintRgb = parse(tintColor, 0x7A3FE0) & 0xFFFFFF;

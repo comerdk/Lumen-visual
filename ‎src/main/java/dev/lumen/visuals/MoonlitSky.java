@@ -29,7 +29,7 @@ public final class MoonlitSky {
     private static long startMs = System.currentTimeMillis();
 
     private static int locRes, locTime, locSpeed, locBright, locStars, locFov, locQuality;
-    private static int locNeb, locClouds, locRight, locUp, locFwd, locDepth, locHasDepth;
+    private static int locNeb, locClouds, locRight, locUp, locFwd, locDepth, locHasDepth, locTint;
 
     private static final Vector3f RIGHT = new Vector3f();
     private static final Vector3f UP = new Vector3f();
@@ -88,6 +88,7 @@ public final class MoonlitSky {
         GL20.glUniform1f(locQuality, 1.0f);
         GL20.glUniform1f(locNeb, neb);
         GL20.glUniform1f(locClouds, clouds);
+        GL20.glUniform3f(locTint, ((cfg.plasmaRgb >> 16) & 255) / 255f, ((cfg.plasmaRgb >> 8) & 255) / 255f, (cfg.plasmaRgb & 255) / 255f);
         GL20.glUniform3f(locRight, RIGHT.x, RIGHT.y, RIGHT.z);
         GL20.glUniform3f(locUp, UP.x, UP.y, UP.z);
         GL20.glUniform3f(locFwd, FWD.x, FWD.y, FWD.z);
@@ -145,6 +146,7 @@ public final class MoonlitSky {
             locQuality = u("uQuality");
             locNeb = u("uNebula");
             locClouds = u("uClouds");
+            locTint = u("uTint");
             locRight = u("uCamRight");
             locUp = u("uCamUp");
             locFwd = u("uCamForward");

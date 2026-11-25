@@ -77,7 +77,8 @@ public final class WorldEffects {
         float phase = 0.5f + 0.5f * (float) Math.sin(t * 0.22);
         int a = plasmaRgb(c.plasma, phase);
         int b = plasmaRgb(c.plasma, 1f - phase);
-        return Gfx.mixRgb(a, b, 0.35f + 0.25f * (float) Math.sin(t * 0.13));
+        int animated = Gfx.mixRgb(a, b, 0.35f + 0.25f * (float) Math.sin(t * 0.13));
+        return Gfx.mixRgb(animated, c.plasmaRgb, 0.78f);
     }
 
     /** Итоговый цвет тумана/фона: заданный цвет с учётом насыщенности и «дыхания» плазмы. */
@@ -87,7 +88,7 @@ public final class WorldEffects {
         if (plasmaActive(c)) {
             double t = (System.currentTimeMillis() % 3_600_000L) / 1000.0 * (c.plasmaSpeed / 100.0);
             float tt = 0.5f + 0.5f * (float) Math.sin(t * 0.35);
-            int p = Gfx.saturate(plasmaRgb(c.plasma, tt), sat);
+            int p = Gfx.saturate(Gfx.mixRgb(plasmaRgb(c.plasma, tt), c.plasmaRgb, 0.78f), sat);
             base = Gfx.mixRgb(base, p, 0.65f * c.plasmaIntensity / 100f);
         }
         return base;
