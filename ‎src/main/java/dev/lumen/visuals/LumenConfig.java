@@ -26,7 +26,17 @@ public final class LumenConfig {
     public boolean showInvisible = true;
     public boolean showDistance = true;
     public boolean hud = true;
-    public boolean customHud = true;          // watermark + список модулей
+    public boolean customHud = true;          // основной HUD
+    public int hudX = 8;                       // отступ слева
+    public int hudY = 8;                       // отступ сверху
+    public int hudScale = 100;                 // 50..150 %
+    public String hudColor = "B388FF";         // цвет HUD, hex RRGGBB
+    public boolean hudLogo = true;
+    public boolean hudCoords = true;
+    public boolean hudFps = true;
+    public boolean hudServer = true;
+    public boolean hudClock = true;
+    public boolean hudSpeed = true;
     public boolean tracersFromCrosshair = false;
 
     // hand fire (1-е лицо) и glow игрока (3-е лицо)
@@ -138,7 +148,7 @@ public final class LumenConfig {
     public String cosColor = "FFD6F5";
 
     public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb;
-    public transient int themeRgb, themeLight, themeDark, cosRgb;
+    public transient int themeRgb, themeLight, themeDark, cosRgb, hudRgb;
 
     public static int parseHex(String s) {
         try {
@@ -235,6 +245,10 @@ public final class LumenConfig {
 
     public void recolor() {
         playerArgb = parse(playerColor, 0xB388FF);
+        hudRgb = parse(hudColor, 0xB388FF) & 0xFFFFFF;
+        hudScale = Math.max(50, Math.min(150, hudScale));
+        hudX = Math.max(0, Math.min(1000, hudX));
+        hudY = Math.max(0, Math.min(1000, hudY));
         hostileArgb = parse(hostileColor, 0xFF5555);
         passiveArgb = parse(passiveColor, 0x55FF99);
         if (range < 8) range = 8;

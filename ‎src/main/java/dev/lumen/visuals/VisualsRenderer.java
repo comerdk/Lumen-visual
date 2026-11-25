@@ -178,42 +178,52 @@ public final class VisualsRenderer {
         return SCR[1];
     }
 
-    /** Компактный glass HUD по референсу: координаты, FPS, сервер, время и скорость. */
+    /** Настраиваемый glass HUD. Надписи READY/SPRINT намеренно не используются. */
     private static void drawHud(DrawContext c, MinecraftClient mc, LumenConfig cfg) {
         TextRenderer f = mc.textRenderer;
         int sw = mc.getWindow().getScaledWidth();
-        double ps = Gfx.sf();
-        int top = Gfx.withA(cfg.themeLight, 0xA0);
-        int bot = Gfx.withA(cfg.themeDark, 0xD0);
+        float scale = cfg.hudScale / 100.0f;
+        MatrixStack matrices = c.getMatrices();
+        matrices.push();
+        matrices.translate(cfg.hudX, cfg.hudY, 0);
+        matrices.scale(scale, scale, 1.0f);
+
+        int color = 0xFF000000 | cfg.hudRgb;
+        int top = Gfx.withA(Gfx.mixRgb(cfg.hudRgb, 0xFFFFFF, 0.25f), 0xE0);
+        int bot = Gfx.withA(Gfx.mixRgb(cfg.hudRgb, 0x000000, 0.48f), 0xE8);
         int accent = 0xFFFFFFFF;
-        int x = 8, y = 8, h = f.fontHeight + 10;
-        String coords = String.format("X %.1f   Y %.1f   Z %.1f", mc.player.getX(), mc.player.getY(), mc.player.getZ());
-        String fps = mc.getCurrentFps() + " FPS";
-        String server = mc.getCurrentServerEntry() == null ? "Singleplayer" : mc.getCurrentServerEntry().address;
-        if (server.length() > 22) server = server.substring(0, 21) + "…";
-        long dayTime = mc.world.getTimeOfDay() % 24000L;
-        String clock = String.format("%02d:%02d", (dayTime / 1000 + 6) % 24, (dayTime % 1000) * 60 / 1000);
-        String line = coords + "   |   " + fps + "   |   " + server + "   |   " + clock;
-        float w = f.getWidth(line) + 20;
-        Gfx.rrect(c, x, y, w, h, h / 2f, top, bot, ps);
-        Gfx.ring(c, x, y, w, h, h / 2f, Gfx.ringPx(ps), 0x66FFFFFF, ps);
-        c.drawText(f, line, x + 10, y + 5, accent, true);
+        int h = f.fontHeight + 10;
+        StringBuilder line = new StringBuilder();
+        if (cfg.hudLogo) line.append("LUMEN");
+        if (cfg.hudCoords) appendHudPart(line, String.format("X %.1f  Y %.1f  Z %.1f", mc.player.getX(), mc.player.getY(), mc.player.getZ()));
+        if (cfg.hudFps) appendHudPart(line, mc.getCurrentFps() + " FPS");
+        if (cfg.hudServer) {
+            String server = mc.getCurrentServerEntry() == null ? "Singleplayer" : mc.getCurrentServerEntry().address;
+            if (server.length() > 22) server = server.substring(0, 21) + "…";
+            appendHudPart(line, server);
+        }
+        if (cfg.hudClock) {
+            long dayTime = mc.world.getTimeOfDay() % 24000L;
+            appendHudPart(line, String.format("%02d:%02d", (dayTime / 1000 + 6) % 24, (dayTime % 1000) * 60 / 1000));
+        }
+        if (cfg.hudSpeed) {
+            double vx = mc.player.getVelocity().x, vz = mc.player.getVelocity().z;
+            appendHudPart(line, String.format("Speed %.2f m/s", Math.sqrt(vx * vx + vz * vz) * 20.0));
+        }
 
-        double vx = mc.player.getVelocity().x, vz = mc.player.getVelocity().z;
-        double speed = Math.sqrt(vx * vx + vz * vz) * 20.0;
-        String speedText = String.format("Speed  %.2f m/s", speed);
-        int swidth = f.getWidth(speedText) + 18;
-        int sx = sw - swidth - 8, sy = y + h + 5;
-        Gfx.rrect(c, sx, sy, swidth, h, h / 2f, top, bot, ps);
-        Gfx.ring(c, sx, sy, swidth, h, h / 2f, Gfx.ringPx(ps), 0x55FFFFFF, ps);
-        c.drawText(f, speedText, sx + 9, sy + 5, 0xFFFFFFFF, true);
+        if (line.length() > 0) {
+            String text = line.toString();
+            float w = f.getWidth(text) + 20;
+            Gfx.rrect(c, 0, 0, w, h, h / 2f, top, bot, Gfx.sf());
+            Gfx.ring(c, 0, 0, w, h, h / 2f, Gfx.ringPx(Gfx.sf()), 0x88FFFFFF, Gfx.sf());
+            c.drawText(f, text, 10, 5, accent, true);
+        }
+        matrices.pop();
+    }
 
-        // Компактная строка статуса вместо прежнего списка модулей.
-        String status = "LUMEN  •  " + (mc.player.isSprinting() ? "SPRINT" : "READY");
-        int ww = f.getWidth(status) + 18;
-        Gfx.rrect(c, 8, y + h + 5, ww, h, h / 2f, top, bot, ps);
-        Gfx.ring(c, 8, y + h + 5, ww, h, h / 2f, Gfx.ringPx(ps), 0x55FFFFFF, ps);
-        c.drawText(f, status, 17, y + h + 10, 0xFFFFFFFF, true);
+    private static void appendHudPart(StringBuilder line, String part) {
+        if (line.length() > 0) line.append("  •  ");
+        line.append(part);
     }
 
     /** Стилизованный цветной огонь вокруг позиции предмета в первой руке (HUD-слой). */

@@ -288,6 +288,19 @@ public class LumenScreen extends Screen {
                 .add(new Tog("Жидкие блики", () -> c.guiAnim, v -> c.guiAnim = v))
                 .add(new Tog("Тема для Target/HUD", () -> c.followTheme, v -> c.followTheme = v));
 
+        mod("HUD", 1, () -> c.customHud, v -> c.customHud = v)
+                .add(new Swatches(ESP_COLORS, hx -> { c.hudColor = hx; c.recolor(); }, () -> c.hudRgb))
+                .add(new Sld("Позиция X", 0, 300, 2, () -> c.hudX, v -> c.hudX = v, String::valueOf))
+                .add(new Sld("Позиция Y", 0, 300, 2, () -> c.hudY, v -> c.hudY = v, String::valueOf))
+                .add(new Sld("Размер", 50, 150, 5, () -> c.hudScale, v -> c.hudScale = v, v -> v + "%"))
+                .add(new Hdr("Отображать"))
+                .add(new Tog("Название Lumen", () -> c.hudLogo, v -> c.hudLogo = v))
+                .add(new Tog("Координаты", () -> c.hudCoords, v -> c.hudCoords = v))
+                .add(new Tog("FPS", () -> c.hudFps, v -> c.hudFps = v))
+                .add(new Tog("Сервер", () -> c.hudServer, v -> c.hudServer = v))
+                .add(new Tog("Время", () -> c.hudClock, v -> c.hudClock = v))
+                .add(new Tog("Скорость", () -> c.hudSpeed, v -> c.hudSpeed = v));
+
         mod("Preview", 2).add(new Preview());
 
         mod("Info", 2)
