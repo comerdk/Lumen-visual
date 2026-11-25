@@ -26,7 +26,17 @@ public final class LumenConfig {
     public boolean showInvisible = true;
     public boolean showDistance = true;
     public boolean hud = true;
+    public boolean customHud = true;          // watermark + список модулей
     public boolean tracersFromCrosshair = false;
+
+    // hand fire (1-е лицо) и glow игрока (3-е лицо)
+    public boolean handFire = false;
+    public int handFireStrength = 40;         // 0..100
+    public int handFireRgb = 0xFF6A18;        // RGB без альфы
+
+    public boolean playerGlow = false;
+    public int playerGlowStrength = 35;       // 0..100
+    public int playerGlowRgb = 0xB388FF;      // RGB без альфы
 
     // параметры
     public int range = 128;
@@ -266,6 +276,10 @@ public final class LumenConfig {
             tespArgb = 0xFF000000 | themeRgb;
             thudArgb = 0xFF000000 | themeRgb;
         }
+        handFireStrength = Math.max(0, Math.min(100, handFireStrength));
+        playerGlowStrength = Math.max(0, Math.min(100, playerGlowStrength));
+        handFireRgb &= 0xFFFFFF;
+        playerGlowRgb &= 0xFFFFFF;
         crystalCount = Math.max(3, Math.min(12, crystalCount));
         crystalSize = Math.max(40, Math.min(200, crystalSize));
         crystalSpeed = Math.max(20, Math.min(300, crystalSpeed));
