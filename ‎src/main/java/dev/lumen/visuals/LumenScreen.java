@@ -32,7 +32,7 @@ public class LumenScreen extends Screen {
     private static final String[] SWATCHES = {"B388FF", "FF6EC7", "5E8BFF", "44D7F5", "5DE6B0", "A6E34F", "FFD24D",
             "FF9A4D", "FF5A5A", "FFFFFF", "8E5BFF", "C77DFF", "00E5FF", "FF2E93"};
     private static final String[] ESP_COLORS = {"39FF6B", "FF3B4D", "55D6FF", "B388FF", "FF6EC7", "FFD24D", "FF9A4D",
-            "5DE6B0", "FFFFFF", "00E5FF", "A6E34F", "FF2E93", "5E8BFF", "C77DFF", "000000"};
+            "5DE6B0", "FFFFFF", "00E5FF", "A6E34F", "FF2E93", "5E8BFF", "C77DFF"};
     private static int tab = 0;
     /** Развёрнутые модули (по имени). Изначально пусто — все свёрнуты. */
     private static final Set<String> OPEN = new HashSet<>();
@@ -149,9 +149,7 @@ public class LumenScreen extends Screen {
                 .add(new Cyc("Стиль", new String[]{"crystal", "ring", "box", "both"}, () -> c.tespStyle, v -> c.tespStyle = v))
                 .add(new Sld("Кристаллы", 3, 12, 1, () -> c.crystalCount, v -> c.crystalCount = v, String::valueOf))
                 .add(new Sld("Размер кристаллов", 40, 200, 5, () -> c.crystalSize, v -> c.crystalSize = v, v -> v + "%"))
-                .add(new Sld("Скорость вращения", 20, 300, 10, () -> c.crystalSpeed, v -> c.crystalSpeed = v, v -> v + "%"))
-                .add(new Hdr("Цвет Target ESP"))
-                .add(new Swatches(ESP_COLORS, hx -> { c.tespColor = hx; c.followTheme = false; c.recolor(); }, () -> c.tespArgb));
+                .add(new Sld("Скорость вращения", 20, 300, 10, () -> c.crystalSpeed, v -> c.crystalSpeed = v, v -> v + "%"));
 
         mod("Target HUD", 1, () -> c.thud, v -> c.thud = v)
                 .add(new Cyc("Стиль", new String[]{"glass", "flat"}, () -> c.thudStyle, v -> c.thudStyle = v))
@@ -215,30 +213,33 @@ public class LumenScreen extends Screen {
                 .add(new Sld("Снег", 0, 400, 10, () -> c.snowCount, v -> c.snowCount = v, String::valueOf))
                 .add(new Sld("Звёзды", 0, 150, 5, () -> c.starCount, v -> c.starCount = v, String::valueOf))
                 .add(new Sld("Дым", 0, 30, 1, () -> c.smokeCount, v -> c.smokeCount = v, String::valueOf))
-                .add(new Sld("Скорость частиц", 20, 300, 10, () -> c.particleSpeed, v -> c.particleSpeed = v, v -> v + "%"))
-                .add(new Hdr("Цвет частиц"))
-                .add(new Swatches(ESP_COLORS, hx -> { c.particleColor = hx; c.recolor(); }, () -> c.particleRgb));
+                .add(new Sld("Скорость частиц", 20, 300, 10, () -> c.particleSpeed, v -> c.particleSpeed = v, v -> v + "%"));
 
         mod("Sky Plasma", 1)
                 .add(new Cyc("Вариант", new String[]{"off", "aurora", "nebula", "solar", "toxic", "moonlit"}, () -> c.plasma, v -> c.plasma = v))
                 .add(new Sld("Яркость", 0, 100, 5, () -> c.plasmaIntensity, v -> c.plasmaIntensity = v, v -> v + "%"))
-                .add(new Sld("Скорость", 20, 300, 10, () -> c.plasmaSpeed, v -> c.plasmaSpeed = v, v -> v + "%"))
-                .add(new Hdr("Цвет Sky Shader"))
-                .add(new Swatches(ESP_COLORS, hx -> { c.plasmaColor = hx; c.recolor(); }, () -> c.plasmaRgb));
+                .add(new Sld("Скорость", 20, 300, 10, () -> c.plasmaSpeed, v -> c.plasmaSpeed = v, v -> v + "%"));
 
         // колонка 3
         mod("View Model", 2, () -> c.vm, v -> c.vm = v)
-                .add(new Sld("Позиция X", -100, 100, 1, () -> c.vmX, v -> c.vmX = v, String::valueOf))
-                .add(new Sld("Позиция Y", -100, 100, 1, () -> c.vmY, v -> c.vmY = v, String::valueOf))
-                .add(new Sld("Позиция Z", -100, 100, 1, () -> c.vmZ, v -> c.vmZ = v, String::valueOf))
-                .add(new Sld("Размер", 30, 200, 5, () -> c.vmScale, v -> c.vmScale = v, v -> v + "%"))
-                .add(new Hdr("Поворот"))
+                .add(new Hdr("Основная рука (Main Hand)"))
+                .add(new Sld("Main X", -100, 100, 1, () -> c.vmX, v -> c.vmX = v, String::valueOf))
+                .add(new Sld("Main Y", -100, 100, 1, () -> c.vmY, v -> c.vmY = v, String::valueOf))
+                .add(new Sld("Main Z", -100, 100, 1, () -> c.vmZ, v -> c.vmZ = v, String::valueOf))
+                .add(new Sld("Main размер", 30, 200, 5, () -> c.vmScale, v -> c.vmScale = v, v -> v + "%"))
+                .add(new Hdr("Вторая рука (Off Hand)"))
+                .add(new Sld("Off X", -100, 100, 1, () -> c.vmOffX, v -> c.vmOffX = v, String::valueOf))
+                .add(new Sld("Off Y", -100, 100, 1, () -> c.vmOffY, v -> c.vmOffY = v, String::valueOf))
+                .add(new Sld("Off Z", -100, 100, 1, () -> c.vmOffZ, v -> c.vmOffZ = v, String::valueOf))
+                .add(new Sld("Off размер", 30, 200, 5, () -> c.vmOffScale, v -> c.vmOffScale = v, v -> v + "%"))
+                .add(new Hdr("Общий поворот"))
                 .add(new Sld("Вокруг X", -180, 180, 5, () -> c.vmRotX, v -> c.vmRotX = v, v -> v + "°"))
                 .add(new Sld("Вокруг Y", -180, 180, 5, () -> c.vmRotY, v -> c.vmRotY = v, v -> v + "°"))
                 .add(new Sld("Вокруг Z", -180, 180, 5, () -> c.vmRotZ, v -> c.vmRotZ = v, v -> v + "°"))
                 .add(new Tog("Без анимации подъёма", () -> c.vmNoEquip, v -> c.vmNoEquip = v))
                 .add(new Btns(new String[]{"Сбросить view model"}, new Runnable[]{() -> {
                     c.vmX = 0; c.vmY = 0; c.vmZ = 0; c.vmScale = 100;
+                    c.vmOffX = 0; c.vmOffY = 0; c.vmOffZ = 0; c.vmOffScale = 100;
                     c.vmRotX = 0; c.vmRotY = 0; c.vmRotZ = 0;
                     c.vmSwing = "smooth"; c.vmSwingSpeed = 100; c.vmAnimation = true; c.vmRotate = false; c.vmRotateSpeed = 1; c.vmNoEquip = false;
                 }}));
@@ -293,19 +294,6 @@ public class LumenScreen extends Screen {
                 .add(new Sld("Прозрачность панели", 20, 95, 5, () -> c.glassOpacity, v -> c.glassOpacity = v, v -> v + "%"))
                 .add(new Tog("Жидкие блики", () -> c.guiAnim, v -> c.guiAnim = v))
                 .add(new Tog("Тема для Target/HUD", () -> c.followTheme, v -> c.followTheme = v));
-
-        mod("HUD", 1, () -> c.customHud, v -> c.customHud = v)
-                .add(new Swatches(ESP_COLORS, hx -> { c.hudColor = hx; c.recolor(); }, () -> c.hudRgb))
-                .add(new Sld("Позиция X", 0, 300, 2, () -> c.hudX, v -> c.hudX = v, String::valueOf))
-                .add(new Sld("Позиция Y", 0, 300, 2, () -> c.hudY, v -> c.hudY = v, String::valueOf))
-                .add(new Sld("Размер", 50, 150, 5, () -> c.hudScale, v -> c.hudScale = v, v -> v + "%"))
-                .add(new Hdr("Отображать"))
-                .add(new Tog("Название Lumen", () -> c.hudLogo, v -> c.hudLogo = v))
-                .add(new Tog("Координаты", () -> c.hudCoords, v -> c.hudCoords = v))
-                .add(new Tog("FPS", () -> c.hudFps, v -> c.hudFps = v))
-                .add(new Tog("Сервер", () -> c.hudServer, v -> c.hudServer = v))
-                .add(new Tog("Время", () -> c.hudClock, v -> c.hudClock = v))
-                .add(new Tog("Скорость", () -> c.hudSpeed, v -> c.hudSpeed = v));
 
         mod("Preview", 2).add(new Preview());
 

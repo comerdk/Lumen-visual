@@ -26,17 +26,7 @@ public final class LumenConfig {
     public boolean showInvisible = true;
     public boolean showDistance = true;
     public boolean hud = true;
-    public boolean customHud = true;          // основной HUD
-    public int hudX = 8;                       // отступ слева
-    public int hudY = 8;                       // отступ сверху
-    public int hudScale = 100;                 // 50..150 %
-    public String hudColor = "B388FF";         // цвет HUD, hex RRGGBB
-    public boolean hudLogo = true;
-    public boolean hudCoords = true;
-    public boolean hudFps = true;
-    public boolean hudServer = true;
-    public boolean hudClock = true;
-    public boolean hudSpeed = true;
+    public boolean customHud = true;          // watermark + список модулей
     public boolean tracersFromCrosshair = false;
 
     // hand fire (1-е лицо) и glow игрока (3-е лицо)
@@ -61,8 +51,6 @@ public final class LumenConfig {
     public boolean tesp = true;
     public String tespStyle = "crystal"; // ring | box | both | crystal
     public String tespColor = "B388FF";
-    public String particleColor = "FFFFFF"; // цвет снега, звёзд и дыма
-    public String plasmaColor = "B388FF";   // основной оттенок Sky Shader
     public int crystalCount = 6;          // 3..12 кристаллов вокруг цели
     public int crystalSize = 100;         // 40..200 % размера
     public int crystalSpeed = 100;        // 20..300 % скорости вращения
@@ -131,7 +119,10 @@ public final class LumenConfig {
     // View model
     public boolean vm = false;
     public int vmX = 0, vmY = 0, vmZ = 0;       // -100..100 (x0.01 блока)
-    public int vmScale = 100;                   // 30..200 %
+    public int vmScale = 100;                   // Main Hand size, 30..200 %
+    // Independent Off Hand position and size. Existing vmX/vmY/vmZ/vmScale remain Main Hand for config compatibility.
+    public int vmOffX = 0, vmOffY = 0, vmOffZ = 0; // -100..100 (x0.01 блока)
+    public int vmOffScale = 100;                 // 30..200 %
     public int vmRotX = 0, vmRotY = 0, vmRotZ = 0; // -180..180
     public String vmSwing = "smooth";           // Wexside: smooth|mode2..mode7|vanilla|none
     public int vmSwingSpeed = 100;              // 50..300 %
@@ -150,8 +141,7 @@ public final class LumenConfig {
     public String cosColor = "FFD6F5";
 
     public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb;
-    public transient int particleRgb, plasmaRgb;
-    public transient int themeRgb, themeLight, themeDark, cosRgb, hudRgb;
+    public transient int themeRgb, themeLight, themeDark, cosRgb;
 
     public static int parseHex(String s) {
         try {
@@ -248,16 +238,10 @@ public final class LumenConfig {
 
     public void recolor() {
         playerArgb = parse(playerColor, 0xB388FF);
-        hudRgb = parse(hudColor, 0xB388FF) & 0xFFFFFF;
-        hudScale = Math.max(50, Math.min(150, hudScale));
-        hudX = Math.max(0, Math.min(1000, hudX));
-        hudY = Math.max(0, Math.min(1000, hudY));
         hostileArgb = parse(hostileColor, 0xFF5555);
         passiveArgb = parse(passiveColor, 0x55FF99);
         if (range < 8) range = 8;
         tespArgb = parse(tespColor, 0xB388FF);
-        particleRgb = parse(particleColor, 0xFFFFFF) & 0xFFFFFF;
-        plasmaRgb = parse(plasmaColor, 0xB388FF) & 0xFFFFFF;
         thudArgb = parse(thudColor, 0xB388FF);
         fogRgb = parse(fogColor, 0x3B1580) & 0xFFFFFF;
         tintRgb = parse(tintColor, 0x7A3FE0) & 0xFFFFFF;
@@ -286,6 +270,13 @@ public final class LumenConfig {
         espFillAlpha = Math.max(10, Math.min(80, espFillAlpha));
         espLine = Math.max(1, Math.min(6, espLine));
         vmScale = Math.max(30, Math.min(200, vmScale));
+        vmX = Math.max(-100, Math.min(100, vmX));
+        vmY = Math.max(-100, Math.min(100, vmY));
+        vmZ = Math.max(-100, Math.min(100, vmZ));
+        vmOffX = Math.max(-100, Math.min(100, vmOffX));
+        vmOffY = Math.max(-100, Math.min(100, vmOffY));
+        vmOffZ = Math.max(-100, Math.min(100, vmOffZ));
+        vmOffScale = Math.max(30, Math.min(200, vmOffScale));
         vmSwingSpeed = Math.max(50, Math.min(300, vmSwingSpeed));
         vmRotateSpeed = Math.max(1, Math.min(5, vmRotateSpeed));
         cosSize = Math.max(50, Math.min(200, cosSize));
