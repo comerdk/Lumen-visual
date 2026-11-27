@@ -40,10 +40,15 @@ public abstract class HeldItemRendererMixin {
         lumen$currentEquip = equipProgress;
         LumenConfig c = LumenConfig.get();
         if (!c.vm) return;
-        float side = hand == Hand.MAIN_HAND ? 1f : -1f;
-        matrices.translate(c.vmX / 100f * side, c.vmY / 100f, c.vmZ / 100f);
-        if (c.vmScale != 100) {
-            float scale = c.vmScale / 100f;
+        boolean mainHand = hand == Hand.MAIN_HAND;
+        float side = mainHand ? 1f : -1f;
+        int x = mainHand ? c.vmX : c.vmOffX;
+        int y = mainHand ? c.vmY : c.vmOffY;
+        int z = mainHand ? c.vmZ : c.vmOffZ;
+        int handScale = mainHand ? c.vmScale : c.vmOffScale;
+        matrices.translate(x / 100f * side, y / 100f, z / 100f);
+        if (handScale != 100) {
+            float scale = handScale / 100f;
             matrices.scale(scale, scale, scale);
         }
         if (c.vmRotX != 0) matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(c.vmRotX));
