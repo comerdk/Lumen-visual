@@ -26,7 +26,17 @@ public final class LumenConfig {
     public boolean showInvisible = true;
     public boolean showDistance = true;
     public boolean hud = true;
-    public boolean customHud = true;          // watermark + список модулей
+    public boolean customHud = true;          // основной HUD
+    public int hudX = 8;                       // отступ слева
+    public int hudY = 8;                       // отступ сверху
+    public int hudScale = 100;                 // 50..150 %
+    public String hudColor = "B388FF";         // цвет HUD, hex RRGGBB
+    public boolean hudLogo = true;
+    public boolean hudCoords = true;
+    public boolean hudFps = true;
+    public boolean hudServer = true;
+    public boolean hudClock = true;
+    public boolean hudSpeed = true;
     public boolean tracersFromCrosshair = false;
 
     // hand fire (1-е лицо) и glow игрока (3-е лицо)
@@ -51,6 +61,8 @@ public final class LumenConfig {
     public boolean tesp = true;
     public String tespStyle = "crystal"; // ring | box | both | crystal
     public String tespColor = "B388FF";
+    public String particleColor = "FFFFFF"; // цвет снега, звёзд и дыма
+    public String plasmaColor = "B388FF";   // основной оттенок Sky Shader
     public int crystalCount = 6;          // 3..12 кристаллов вокруг цели
     public int crystalSize = 100;         // 40..200 % размера
     public int crystalSpeed = 100;        // 20..300 % скорости вращения
@@ -141,7 +153,8 @@ public final class LumenConfig {
     public String cosColor = "FFD6F5";
 
     public transient int playerArgb, hostileArgb, passiveArgb, tespArgb, thudArgb, fogRgb, tintRgb;
-    public transient int themeRgb, themeLight, themeDark, cosRgb;
+    public transient int particleRgb, plasmaRgb;
+    public transient int themeRgb, themeLight, themeDark, cosRgb, hudRgb;
 
     public static int parseHex(String s) {
         try {
@@ -238,10 +251,16 @@ public final class LumenConfig {
 
     public void recolor() {
         playerArgb = parse(playerColor, 0xB388FF);
+        hudRgb = parse(hudColor, 0xB388FF) & 0xFFFFFF;
+        hudScale = Math.max(50, Math.min(150, hudScale));
+        hudX = Math.max(0, Math.min(1000, hudX));
+        hudY = Math.max(0, Math.min(1000, hudY));
         hostileArgb = parse(hostileColor, 0xFF5555);
         passiveArgb = parse(passiveColor, 0x55FF99);
         if (range < 8) range = 8;
         tespArgb = parse(tespColor, 0xB388FF);
+        particleRgb = parse(particleColor, 0xFFFFFF) & 0xFFFFFF;
+        plasmaRgb = parse(plasmaColor, 0xB388FF) & 0xFFFFFF;
         thudArgb = parse(thudColor, 0xB388FF);
         fogRgb = parse(fogColor, 0x3B1580) & 0xFFFFFF;
         tintRgb = parse(tintColor, 0x7A3FE0) & 0xFFFFFF;
